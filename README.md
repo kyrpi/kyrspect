@@ -1,7 +1,7 @@
 # Kyrspect
 
 [![GitHub](https://img.shields.io/badge/GitHub-kyrpi%2Fkyrspect-blue?logo=github)](https://github.com/kyrpi/kyrspect)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: Apache 2.0](https://shields.io/badge/license-Apache%202-blue)](https://opensource.org/license/apache-2.0)
 [![WebAssembly](https://img.shields.io/badge/WebAssembly-Rust%20Engine-6366f1?logo=webassembly)](https://github.com/kyrpi/kyrspect)
 
 Modern video playback for the web — available in both high-performance **WebAssembly (`@kyrspect/wasm`)** and lightweight TypeScript (`@kyrspect/core`).
