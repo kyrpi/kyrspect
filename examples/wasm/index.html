@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kyrspect WebAssembly Player</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%236366f1'><path d='M8 5v14l11-7z'/></svg>" />
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <div class="title-group">
+          <div class="logo-badge">WASM</div>
+          <div>
+            <h1>Kyrspect WebAssembly</h1>
+            <div class="subtitle">Rust Wasm video engine with Kyrspect UI</div>
+          </div>
+        </div>
+        <div class="badge-tag">WebAssembly</div>
+      </header>
+
+      <div class="main-grid">
+        <div class="player-card">
+          <div class="player-wrapper">
+            <div id="wasm-player-container"></div>
+          </div>
+          <div class="controls-toolbar">
+            <div class="source-buttons">
+              <button class="btn source-btn active" data-key="sample">Local Video</button>
+              <button class="btn source-btn" data-key="mux_hls">Tears of Steel</button>
+              <button class="btn source-btn" data-key="sintel_hls">Sintel HD</button>
+              <button class="btn source-btn" data-key="live_hls">Live Stream</button>
+            </div>
+
+            <div class="config-row">
+              <div class="select-group">
+                <label for="theme-select">Theme:</label>
+                <select id="theme-select">
+                  <option value="indigo">Indigo Glow</option>
+                  <option value="cyberpunk">Cyberpunk Neon</option>
+                  <option value="emerald">Emerald Matrix</option>
+                  <option value="sunset">Sunset Ruby</option>
+                </select>
+              </div>
+
+              <div class="select-group">
+                <label for="lang-select">Language:</label>
+                <select id="lang-select">
+                  <option value="en">English</option>
+                  <option value="tr">Türkçe</option>
+                  <option value="de">Deutsch</option>
+                  <option value="fr">Français</option>
+                  <option value="es">Español</option>
+                  <option value="pt">Português</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="sidebar">
+          <div class="telemetry-card">
+            <div class="card-header">
+              <div class="card-title">
+                <span class="pulse-dot"></span> Wasm Telemetry
+              </div>
+              <span id="stat-status" class="badge-tag" style="padding: 2px 6px; font-size: 10px;">IDLE</span>
+            </div>
+
+            <div class="metric-grid">
+              <div class="metric-box">
+                <div class="metric-label">Frame Rate</div>
+                <div id="stat-fps" class="metric-value green">0 FPS</div>
+              </div>
+              <div class="metric-box">
+                <div class="metric-label">Dropped Frames</div>
+                <div id="stat-dropped" class="metric-value orange">0</div>
+              </div>
+              <div class="metric-box">
+                <div class="metric-label">ABR Bandwidth</div>
+                <div id="stat-bandwidth" class="metric-value cyan">5.0 Mbps</div>
+              </div>
+              <div class="metric-box">
+                <div class="metric-label">Active Quality</div>
+                <div id="stat-quality" class="metric-value purple">Auto</div>
+              </div>
+            </div>
+
+            <div class="bar-container">
+              <div class="metric-label" style="display: flex; justify-content: space-between;">
+                <span>Buffer Health</span>
+                <span id="stat-buffer-sec" style="font-family: monospace;">0s</span>
+              </div>
+              <div class="progress-bar-bg">
+                <div id="buffer-bar-fill" class="progress-bar-fill"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="telemetry-card">
+            <div class="card-header">
+              <div class="card-title">
+                WebVTT Cues
+              </div>
+            </div>
+            <div id="active-cues" class="cues-box">
+              No subtitle
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

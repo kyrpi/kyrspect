@@ -1,0 +1,46 @@
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+*.tgz
+.npm
+.eslintcache
+.node_repl_history
+*.tsbuildinfo
+
+# Build outputs
+dist/
+coverage/
+.turbo/
+.cache/
+.vite/
+.parcel-cache/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Tests / tooling
+playwright-report/
+test-results/
+scripts/*.png
+
+# OS / editor
+.DS_Store
+Thumbs.db
+
+# Rust / Cargo / WASM
+target/
+**/*.rs.bk
+*.pdb
+
+# wasm-bindgen / wasm-pack artifacts (if added later)
+pkg/
+wasm-pack.log
+
+# Auto-generated WASM bundle
+packages/wasm/src/generated/

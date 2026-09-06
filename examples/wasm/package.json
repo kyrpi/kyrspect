@@ -1,0 +1,17 @@
+{
+  "name": "@kyrspect/example-wasm",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5178",
+    "build": "vite build"
+  },
+  "dependencies": {
+    "@kyrspect/wasm": "0.1.0",
+    "@kyrspect/ui": "0.1.0"
+  },
+  "devDependencies": {
+    "vite": "^6.2.0"
+  }
+}

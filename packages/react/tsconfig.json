@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "jsx": "react-jsx",
+    "noEmit": true,
+    "paths": {
+      "@kyrspect/core": ["../core/src/index.ts"],
+      "@kyrspect/ui": ["../ui/src/index.ts"]
+    }
+  },
+  "include": ["src"]
+}

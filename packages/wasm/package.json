@@ -1,0 +1,39 @@
+{
+  "name": "@kyrspect/wasm",
+  "version": "0.1.0",
+  "description": "WebAssembly video playback engine for Kyrspect",
+  "homepage": "https://github.com/kyrpi/kyrspect#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kyrpi/kyrspect.git",
+    "directory": "packages/wasm"
+  },
+  "bugs": {
+    "url": "https://github.com/kyrpi/kyrspect/issues"
+  },
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "scripts": {
+    "build:rust": "pwsh -Command \"cd rust-core; cargo build --target wasm32-unknown-unknown --release\"",
+    "bundle:wasm": "node scripts/bundle-wasm.mjs",
+    "build:ts": "tsup",
+    "build": "npm run build:rust && npm run bundle:wasm && npm run build:ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@kyrspect/ui": "*"
+  },
+  "devDependencies": {
+    "tsup": "^8.3.6",
+    "typescript": "^5.7.3"
+  }
+}

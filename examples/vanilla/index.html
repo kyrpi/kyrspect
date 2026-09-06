@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Kyrspect — Vanilla</title>
+    <link rel="stylesheet" href="../demo/src/styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <header class="top">
+        <div class="brand">
+          <span class="mark"></span>
+          <div>
+            <strong>Vanilla</strong>
+            <p>MP4, WebM, and HLS from @kyrspect/core.</p>
+          </div>
+        </div>
+      </header>
+      <div class="presets" id="tabs">
+        <button type="button" class="is-active" data-src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4">MP4</button>
+        <button type="button" data-src="https://upload.wikimedia.org/wikipedia/commons/transcoded/c/c0/Big_Buck_Bunny_4K.webm/Big_Buck_Bunny_4K.webm.360p.webm">WebM</button>
+        <button type="button" data-src="https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8">HLS</button>
+      </div>
+      <div id="player"></div>
+    </div>
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>

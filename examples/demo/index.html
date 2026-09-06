@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kyrspect — Playground</title>
+    <link rel="stylesheet" href="./src/styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <header class="top">
+        <div class="brand">
+          <span class="mark"></span>
+          <div>
+            <strong>Kyrspect</strong>
+            <p>Modern video playback for the web.</p>
+          </div>
+        </div>
+        <nav>
+          <a href="/">Demo</a>
+          <a href="http://localhost:5174">Vanilla</a>
+          <a href="http://localhost:5175">React</a>
+          <a href="http://localhost:5176">HLS</a>
+          <a href="http://localhost:5177">Live</a>
+        </nav>
+      </header>
+      <main class="layout">
+        <section class="stage">
+          <form id="loader" class="loader">
+            <input id="url" type="url" placeholder="Paste an MP4, WebM, or HLS URL" autocomplete="off" />
+            <button type="submit">Load</button>
+          </form>
+          <div class="presets">
+            <button type="button" class="is-active" data-src="/sample.mp4">Local MP4</button>
+            <button type="button" data-src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4">MP4</button>
+            <button type="button" data-src="https://upload.wikimedia.org/wikipedia/commons/transcoded/c/c0/Big_Buck_Bunny_4K.webm/Big_Buck_Bunny_4K.webm.360p.webm">WebM</button>
+            <button type="button" data-src="https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8">HLS VOD</button>
+            <button type="button" data-src="https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8">HLS fMP4</button>
+            <button type="button" data-src="https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8">Live HLS</button>
+            <label class="theme-picker" title="Player chrome">
+              Layout
+              <select id="layout">
+                <option value="standard">Cinema</option>
+                <option value="reels">Reels</option>
+              </select>
+            </label>
+            <label class="theme-picker" title="Player language">
+              Language
+              <select id="language">
+                <option value="auto">Auto</option>
+                <option value="en">English</option>
+                <option value="tr">Türkçe</option>
+                <option value="es">Español</option>
+                <option value="fr">Français</option>
+                <option value="de">Deutsch</option>
+                <option value="pt">Português</option>
+              </select>
+            </label>
+            <label class="theme-picker" title="Player accent color">
+              Accent
+              <input id="accent" type="color" value="#6d4aff" />
+            </label>
+          </div>
+          <div id="player"></div>
+        </section>
+        <aside class="diag" id="diag">
+          <h2>Diagnostics</h2>
+          <dl></dl>
+        </aside>
+      </main>
+    </div>
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,18 @@
+[package]
+name = "kyrspect-wasm-core"
+version = "0.1.0"
+edition = "2021"
+description = "High performance WebAssembly video engine for Kyrspect"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+serde = { version = "1.0", default-features = false, features = ["derive", "alloc"] }
+serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
