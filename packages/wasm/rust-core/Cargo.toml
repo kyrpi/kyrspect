@@ -3,6 +3,7 @@ name = "kyrspect-wasm-core"
 version = "0.1.0"
 edition = "2021"
 description = "High performance WebAssembly video engine for Kyrspect"
+license = "Apache-2.0"
 
 [lib]
 crate-type = ["cdylib", "rlib"]

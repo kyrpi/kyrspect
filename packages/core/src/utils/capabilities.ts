@@ -1,5 +1,7 @@
 import { canPlayNativeHls } from "./source";
 import { isHlsJsSupported } from "./hls";
+import { isDashJsSupported } from "./dash";
+import { isEmeAvailable, isFairPlaySupported, isPlayReadySupported, isWidevineSupported } from "../drm/capabilities";
 
 export interface CodecSupport {
   supported: boolean;
@@ -21,6 +23,12 @@ export interface KyrspectCapabilitySnapshot {
   hls: boolean;
   hlsNative: boolean;
   hlsJs: boolean;
+  dash: boolean;
+  dashJs: boolean;
+  eme: boolean;
+  widevine: boolean;
+  playready: boolean;
+  fairplay: boolean;
   mse: boolean;
   pip: boolean;
   fullscreen: boolean;
@@ -88,12 +96,41 @@ async function decodingInfo(contentType: string): Promise<CodecSupport> {
   }
 }
 
+export interface CapabilityProbeOptions {
+  drm?: boolean;
+}
+
 export class KyrspectCapabilities {
-  static async probe(video?: HTMLVideoElement): Promise<KyrspectCapabilitySnapshot> {
+  private static cache = new Map<string, Promise<KyrspectCapabilitySnapshot>>();
+
+  static async probe(video?: HTMLVideoElement, options?: CapabilityProbeOptions): Promise<KyrspectCapabilitySnapshot> {
+    const key = options?.drm ? "drm" : "default";
+    if (!video) {
+      const cached = this.cache.get(key);
+      if (cached) return cached;
+      const pending = this.probeUncached(undefined, options).catch((error) => {
+        this.cache.delete(key);
+        throw error;
+      });
+      this.cache.set(key, pending);
+      return pending;
+    }
+    return this.probeUncached(video, options);
+  }
+
+  private static async probeUncached(
+    video: HTMLVideoElement | undefined,
+    options?: CapabilityProbeOptions,
+  ): Promise<KyrspectCapabilitySnapshot> {
     const media =
       video ?? (typeof document !== "undefined" ? document.createElement("video") : undefined);
     const hlsNative = canPlayNativeHls(media);
     const hlsJs = isHlsJsSupported();
+    const dashJs = isDashJsSupported();
+    const eme = isEmeAvailable();
+    const [widevine, playready, fairplay] = options?.drm
+      ? await Promise.all([isWidevineSupported(), isPlayReadySupported(), isFairPlaySupported()])
+      : [false, false, false];
 
     const details = {
       h264: emptyCodec(),
@@ -104,17 +141,17 @@ export class KyrspectCapabilities {
     } as KyrspectCapabilitySnapshot["details"];
 
     if (media) {
-      for (const [key, type] of Object.entries(VIDEO_PROBES) as Array<
-        [keyof typeof details, string]
-      >) {
-        const basic = canPlay(media, type);
-        const info = await decodingInfo(type);
-        details[key] = {
-          supported: basic || info.supported,
-          smooth: info.smooth,
-          powerEfficient: info.powerEfficient,
-        };
-      }
+      await Promise.all(
+        (Object.entries(VIDEO_PROBES) as Array<[keyof typeof details, string]>).map(async ([key, type]) => {
+          const basic = canPlay(media, type);
+          const info = await decodingInfo(type);
+          details[key] = {
+            supported: basic || info.supported,
+            smooth: info.smooth,
+            powerEfficient: info.powerEfficient,
+          };
+        }),
+      );
     }
 
     const audio = {
@@ -135,6 +172,12 @@ export class KyrspectCapabilities {
       hls: hlsNative || hlsJs,
       hlsNative,
       hlsJs,
+      dash: dashJs,
+      dashJs,
+      eme,
+      widevine,
+      playready,
+      fairplay,
       mse: typeof MediaSource !== "undefined",
       pip: typeof document !== "undefined" && Boolean(document.pictureInPictureEnabled),
       fullscreen:

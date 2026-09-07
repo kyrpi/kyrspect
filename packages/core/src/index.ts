@@ -4,9 +4,28 @@ export { KyrspectError, normalizeError, userFacingErrorMessage } from "./errors/
 export { KyrspectCapabilities } from "./utils/capabilities";
 export { NativePlaybackAdapter } from "./adapters/NativePlaybackAdapter";
 export { HlsPlaybackAdapter } from "./adapters/HlsPlaybackAdapter";
+export { DashPlaybackAdapter } from "./adapters/DashPlaybackAdapter";
 export { MediaStreamPlaybackAdapter } from "./adapters/MediaStreamPlaybackAdapter";
 export { PlaybackManager } from "./playback/PlaybackManager";
-export { resolveSourceSync, normalizeSource, isProbablyHlsUrl, isHlsMime } from "./utils/source";
+export { resolveSourceSync, normalizeSource, isProbablyHlsUrl, isHlsMime, isProbablyDashUrl, isDashMime } from "./utils/source";
+export {
+  DrmManager,
+  WidevineDrmProvider,
+  PlayReadyDrmProvider,
+  FairPlayDrmProvider,
+  resolveDrmOptions,
+  needsDrmManager,
+  hasWidevine,
+  hasPlayReady,
+  hasFairPlay,
+  hasConfiguredDrm,
+  isEmeAvailable,
+  isWidevineSupported,
+  isPlayReadySupported,
+  isFairPlaySupported,
+} from "./drm";
+export { WIDEVINE_KEY_SYSTEM, PLAYREADY_KEY_SYSTEM, FAIRPLAY_KEY_SYSTEM } from "./types/drm";
+export { toDashProtectionData, toHlsDrmConfig } from "./utils/drm";
 export { DEFAULT_OPTIONS } from "./types/options";
 export { DEFAULT_STATS_FIELDS } from "./types/stats";
 export {
@@ -47,6 +66,14 @@ export type {
   StatsOptions,
   CaptionOptions,
   HlsOptions,
+  DashOptions,
+  DrmOptions,
+  DrmLicenseRequest,
+  DrmRobustness,
+  DrmSystemId,
+  WidevineOptions,
+  PlayReadyOptions,
+  FairPlayOptions,
   LiveOptions,
   NetworkOptions,
   RetryOptions,
@@ -58,4 +85,4 @@ export type { UIAspectRatio, UIFit, UILayout } from "@kyrspect/ui";
 export type { LocaleCode } from "@kyrspect/ui";
 
 export type { KyrspectErrorCategory } from "./errors/KyrspectError";
-export type { KyrspectCapabilitySnapshot, CodecSupport } from "./utils/capabilities";
+export type { KyrspectCapabilitySnapshot, CodecSupport, CapabilityProbeOptions } from "./utils/capabilities";

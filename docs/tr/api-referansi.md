@@ -8,7 +8,8 @@
 
 ```typescript
 interface KyrspectWasmOptions {
-  src?: string | { src: string; type?: string; isLive?: boolean };
+  src?: string | { src: string; type?: string; isLive?: boolean; drm?: DrmOptions };
+  drm?: DrmOptions; // isteğe bağlı; yoksa varsayılan oynatma, EME yok
   autoplay?: boolean;
   muted?: boolean;
   volume?: number; // 0.0 - 1.0 arası ses seviyesi
@@ -75,7 +76,7 @@ interface KyrspectWasmOptions {
 
 | Olay | İçerik (Payload) | Açıklama |
 |---|---|---|
-| `ready` | `void` | Oynatıcı ve Wasm motoru başarıyla yüklendi |
+| `ready` | `void` | Arayüz bağlandı ve isteğe bağlı ilk `src` yüklemesi başladı (WASM ABR hâlâ başlıyor olabilir) |
 | `play` | `void` | Oynatma başladı |
 | `pause` | `void` | Oynatma duraklatıldı |
 | `playing` | `void` | Video kareleri akmaya başladı |
@@ -90,3 +91,5 @@ interface KyrspectWasmOptions {
 | `statsupdate` | `PlayerStats` | Gerçek zamanlı istatistik tick'i (1 saniyede bir) |
 | `error` | `{ message, fatal }` | Bir hata meydana geldi |
 | `destroy` | `void` | Oynatıcı bellekten silindi |
+
+`drm` [DRM](./drm.md) sayfasında. `load()` `.m3u8` / `.mpd` türünü WASM beklemeden çözer ([yükleme](./yukleme.md)).

@@ -4,6 +4,7 @@ import type { KyrspectAudioTrack, KyrspectSubtitleTrack } from "./tracks";
 import type { KyrspectOptions } from "./options";
 import type { EventEmitter } from "../events/EventEmitter";
 import type { KyrspectEventMap } from "./events";
+import type { DrmManager } from "../drm/DrmManager";
 
 export interface AdapterContext {
   options: KyrspectOptions;
@@ -11,6 +12,7 @@ export interface AdapterContext {
   debug: (namespace: string, ...args: unknown[]) => void;
   getHeaders(): Record<string, string>;
   beforeRequest?(request: NetworkRequest): void | Promise<void>;
+  drm: DrmManager | null;
 }
 
 export interface NetworkRequest {

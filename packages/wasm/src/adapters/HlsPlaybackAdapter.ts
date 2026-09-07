@@ -1,5 +1,7 @@
 import type { UIQuality } from "@kyrspect/ui";
 import type { WasmQualityProfile } from "../wasm/WasmBridge";
+import type { DrmOptions } from "../drm";
+import { licenseXhrSetup, toHlsDrmConfig } from "../drm";
 
 export interface HlsCallbacks {
   onQualitiesLoaded: (qualities: UIQuality[], wasmProfiles: WasmQualityProfile[]) => void;
@@ -17,16 +19,20 @@ export class HlsPlaybackAdapter {
     this.callbacks = callbacks;
   }
 
-  async load(src: string): Promise<void> {
+  async load(src: string, drm: DrmOptions | null = null): Promise<void> {
     const HlsConstructor = (window as any).Hls;
     if (HlsConstructor && HlsConstructor.isSupported()) {
       if (this.hls) {
         this.hls.destroy();
       }
 
+      const drmConfig = drm ? toHlsDrmConfig(drm) : null;
+      const licenseSetup = drm ? licenseXhrSetup(drm) : undefined;
       this.hls = new HlsConstructor({
         enableWorker: true,
         lowLatencyMode: true,
+        ...(drmConfig ?? {}),
+        ...(licenseSetup ? { licenseXhrSetup: licenseSetup } : {}),
       });
 
       this.hls.attachMedia(this.media);

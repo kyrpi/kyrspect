@@ -67,6 +67,8 @@ const player = new KyrspectWasm("#player", {
 player.play();
 ```
 
+HLS (`.m3u8`) ve DASH (`.mpd`) JavaScript’te tespit edilir. Bu URL’leri sınıflandırmak için WASM beklenmez. DRM isteğe bağlıdır — lisans sunucunuz yoksa `drm` vermeyin. Ayrıntılar: [DRM](./drm.md), [yükleme](./yukleme.md).
+
 ---
 
 ## HTML Yapılandırması

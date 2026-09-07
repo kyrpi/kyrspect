@@ -12,6 +12,8 @@ WebAssembly video playback engine for Kyrspect.
 - **Real-Time Telemetry**: FPS, dropped frames, buffer health, and connection quality.
 - **Subtitle & WebVTT Engine**: Cue parser and timeline lookup.
 - **Kyrspect UI Integration**: Compatible with `@kyrspect/ui` (custom themes, localization, controls, and stats overlay).
+- **Optional DRM**: Same `drm` option as core. Omitted means the default HLS / DASH / progressive path.
+- **Fast start**: UI mounts before WASM is ready; `.m3u8` / `.mpd` are classified in JavaScript.
 
 ## Installation
 
@@ -50,3 +52,7 @@ player.play();
 # Build Rust Wasm core, bundle binary, and compile TypeScript package
 npm run build -w @kyrspect/wasm
 ```
+
+## License
+
+Apache License 2.0. See the repository [LICENSE](../../LICENSE) and [NOTICE](../../NOTICE).

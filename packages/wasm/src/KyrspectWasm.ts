@@ -25,6 +25,9 @@ import { WasmBridge, type WasmQualityProfile } from "./wasm/WasmBridge";
 import { EventEmitter } from "./events/EventEmitter";
 import { NativePlaybackAdapter } from "./adapters/NativePlaybackAdapter";
 import { HlsPlaybackAdapter } from "./adapters/HlsPlaybackAdapter";
+import { DashPlaybackAdapter } from "./adapters/DashPlaybackAdapter";
+import { mergeDrm, type DrmOptions } from "./drm";
+import { detectMediaKind, needsWasmSourceHint } from "./source";
 
 export class KyrspectWasm implements PlayerLike {
   static readonly version = "0.1.0-wasm";
@@ -34,10 +37,14 @@ export class KyrspectWasm implements PlayerLike {
   readonly options: { debug?: boolean; keyboard?: boolean | Record<string, string> };
 
   private wasmBridge: WasmBridge | null = null;
+  private wasmReady: Promise<WasmBridge> | null = null;
   private readonly events = new EventEmitter<KyrspectWasmEventMap>();
   private uiHandle: PlayerUIHandle | null = null;
   private nativeAdapter: NativePlaybackAdapter;
-  private hlsAdapter: HlsPlaybackAdapter;
+  private hlsAdapter: HlsPlaybackAdapter | null = null;
+  private dashAdapter: DashPlaybackAdapter | null = null;
+  private activeAdaptive: "hls" | "dash" | "native" = "native";
+  private pendingWasmQualities: WasmQualityProfile[] | null = null;
 
   private availableQualities: UIQuality[] = [];
   private currentQualityState: QualityState = {
@@ -123,34 +130,56 @@ export class KyrspectWasm implements PlayerLike {
     if (options.preload) this.media.preload = options.preload;
 
     this.nativeAdapter = new NativePlaybackAdapter(this.media);
-    this.hlsAdapter = new HlsPlaybackAdapter(this.media, {
-      onQualitiesLoaded: (qualities, wasmProfiles) => {
-        this.availableQualities = qualities;
-        this.wasmBridge?.setQualities(wasmProfiles);
-        this.events.emit("qualitieschange", { qualities });
-      },
-      onBandwidthSample: (bytes, durationSec) => {
-        this.wasmBridge?.recordBandwidthSample(bytes, durationSec);
-      },
-      onError: (err) => {
-        this.events.emit("error", { message: err.message, fatal: true });
-      },
-    });
-
-    this.initWasmAndListeners(options);
+    this.setupMediaListeners();
+    this.initUiAndSource(options);
   }
 
-  private async initWasmAndListeners(options: KyrspectWasmOptions) {
-    try {
-      this.wasmBridge = await WasmBridge.create();
+  private adaptiveCallbacks() {
+    return {
+      onQualitiesLoaded: (qualities: UIQuality[], wasmProfiles: WasmQualityProfile[]) => {
+        this.availableQualities = qualities;
+        if (this.wasmBridge) this.wasmBridge.setQualities(wasmProfiles);
+        else this.pendingWasmQualities = wasmProfiles;
+        this.events.emit("qualitieschange", { qualities });
+      },
+      onBandwidthSample: (bytes: number, durationSec: number) => {
+        this.wasmBridge?.recordBandwidthSample(bytes, durationSec);
+      },
+      onError: (err: Error) => {
+        this.events.emit("error", { message: err.message, fatal: true });
+      },
+    };
+  }
+
+  private getHlsAdapter(): HlsPlaybackAdapter {
+    this.hlsAdapter ??= new HlsPlaybackAdapter(this.media, this.adaptiveCallbacks());
+    return this.hlsAdapter;
+  }
+
+  private getDashAdapter(): DashPlaybackAdapter {
+    this.dashAdapter ??= new DashPlaybackAdapter(this.media, this.adaptiveCallbacks());
+    return this.dashAdapter;
+  }
+
+  private ensureWasm(): Promise<WasmBridge> {
+    this.wasmReady ??= WasmBridge.create().then((bridge) => {
       if (this.destroyed) {
-        this.wasmBridge.destroy();
-        return;
+        bridge.destroy();
+        throw new Error("KyrspectWasm destroyed");
       }
-
-      this.setupMediaListeners();
+      this.wasmBridge = bridge;
+      if (this.pendingWasmQualities) {
+        bridge.setQualities(this.pendingWasmQualities);
+        this.pendingWasmQualities = null;
+      }
       this.setupIntervals();
+      return bridge;
+    });
+    return this.wasmReady;
+  }
 
+  private async initUiAndSource(options: KyrspectWasmOptions) {
+    try {
       if (options.controls !== false && options.ui?.controls !== false) {
         const uiOpts = options.ui || {};
         this.uiHandle = attachDefaultUI(this, {
@@ -170,19 +199,28 @@ export class KyrspectWasm implements PlayerLike {
 
       if (options.tracks) {
         for (const trk of options.tracks) {
-          this.loadTextTrack(trk);
+          void this.loadTextTrack(trk);
         }
       }
+
+      void this.ensureWasm().catch((err) => {
+        console.error("[KyrspectWasm] WASM init error:", err);
+      });
 
       if (options.src) {
         await this.load(options.src);
       }
 
-      this.events.emit("ready");
+      if (!this.destroyed) this.events.emit("ready");
     } catch (err) {
       console.error("[KyrspectWasm] Initialization error:", err);
       this.events.emit("error", { message: (err as Error).message, fatal: true });
     }
+  }
+
+  private resolveDrm(source?: string | { drm?: DrmOptions }): DrmOptions | null {
+    const sourceDrm = typeof source === "object" ? source.drm : undefined;
+    return mergeDrm(this.rawOptions.drm, sourceDrm);
   }
 
   private setupMediaListeners() {
@@ -251,6 +289,7 @@ export class KyrspectWasm implements PlayerLike {
   }
 
   private setupIntervals() {
+    if (this.statsInterval || this.destroyed) return;
     this.statsInterval = setInterval(() => {
       if (this.destroyed || !this.wasmBridge) return;
       const stats = this.getStats();
@@ -270,7 +309,7 @@ export class KyrspectWasm implements PlayerLike {
         if (abrResult.selected_index >= 0 && abrResult.selected_index !== this.currentQualityState.level) {
           const selectedProfile = this.availableQualities[abrResult.selected_index];
           if (selectedProfile) {
-            this.hlsAdapter.setQualityLevel(abrResult.selected_index);
+            this.applyQualityLevel(abrResult.selected_index);
             this.currentQualityState = {
               mode: "auto",
               level: abrResult.selected_index,
@@ -293,19 +332,35 @@ export class KyrspectWasm implements PlayerLike {
     }, 250);
   }
 
-  async load(source: string | { src: string; type?: string; isLive?: boolean }): Promise<void> {
+  async load(source: string | { src: string; type?: string; isLive?: boolean; drm?: DrmOptions }): Promise<void> {
     const srcStr = typeof source === "string" ? source : source.src;
     const isLive = typeof source === "object" ? Boolean(source.isLive) : false;
     this.currentSrc = srcStr;
     this.isLiveStream = isLive;
 
     this.wasmBridge?.setStatus("loading");
+    void this.ensureWasm();
 
-    const analysis = await WasmBridge.analyzeSource(srcStr, typeof source === "object" ? source.type : undefined);
+    const mimeHint = typeof source === "object" ? source.type : undefined;
+    let kind = detectMediaKind(srcStr, mimeHint);
+    if (kind === "native" && needsWasmSourceHint(srcStr, mimeHint)) {
+      const analysis = await WasmBridge.analyzeSource(srcStr, mimeHint);
+      if (analysis.media_type === "dash" || analysis.is_dash) kind = "dash";
+      else if (analysis.is_hls || analysis.media_type === "hls") kind = "hls";
+    }
 
-    if (analysis.is_hls) {
-      await this.hlsAdapter.load(srcStr);
+    this.hlsAdapter?.destroy();
+    this.dashAdapter?.destroy();
+    const drm = this.resolveDrm(source);
+
+    if (kind === "dash") {
+      this.activeAdaptive = "dash";
+      await this.getDashAdapter().load(srcStr, drm);
+    } else if (kind === "hls") {
+      this.activeAdaptive = "hls";
+      await this.getHlsAdapter().load(srcStr, drm);
     } else {
+      this.activeAdaptive = "native";
       this.nativeAdapter.load(srcStr);
     }
   }
@@ -470,6 +525,11 @@ export class KyrspectWasm implements PlayerLike {
     return this.currentQualityState;
   }
 
+  private applyQualityLevel(level: number): void {
+    if (this.activeAdaptive === "dash") this.dashAdapter?.setQualityLevel(level);
+    else this.hlsAdapter?.setQualityLevel(level);
+  }
+
   setQuality(level: number | "auto"): void {
     if (level === "auto") {
       this.enableAutoQuality();
@@ -478,7 +538,7 @@ export class KyrspectWasm implements PlayerLike {
 
     const q = this.availableQualities[level];
     if (q) {
-      this.hlsAdapter.setQualityLevel(level);
+      this.applyQualityLevel(level);
       this.currentQualityState = {
         mode: "manual",
         level,
@@ -491,7 +551,7 @@ export class KyrspectWasm implements PlayerLike {
   }
 
   enableAutoQuality(): void {
-    this.hlsAdapter.setQualityLevel(-1);
+    this.applyQualityLevel(-1);
     this.currentQualityState = {
       ...this.currentQualityState,
       mode: "auto",
@@ -694,7 +754,8 @@ export class KyrspectWasm implements PlayerLike {
     if (this.subtitleInterval) clearInterval(this.subtitleInterval);
 
     this.uiHandle?.destroy();
-    this.hlsAdapter.destroy();
+    this.hlsAdapter?.destroy();
+    this.dashAdapter?.destroy();
     this.nativeAdapter.destroy();
     this.wasmBridge?.destroy();
     this.events.emit("destroy");

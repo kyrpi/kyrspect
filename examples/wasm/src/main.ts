@@ -41,6 +41,11 @@ const PRESETS = {
     title: "Akamai Live Stream",
     isLive: true,
   },
+  bbb_dash: {
+    src: "https://dash.akamaized.net/akamai/bbb_30fps/bbb_30fps.mpd",
+    title: "Big Buck Bunny DASH",
+    isLive: false,
+  },
 };
 
 const THEMES: Record<string, any> = {

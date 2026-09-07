@@ -2,6 +2,7 @@ import type { SourceInput } from "./source";
 import type { KyrspectTextTrackInput } from "./tracks";
 import type { NetworkRequest } from "./adapter";
 import type { StatsOptions } from "./stats";
+import type { DrmOptions } from "./drm";
 import type { UIAspectRatio, UIControlsConfig, UIFit, UILabels, UILayout, UITheme } from "@kyrspect/ui";
 
 export interface CaptionOptions {
@@ -16,6 +17,13 @@ export interface HlsOptions {
   capLevelToPlayerSize?: boolean;
   maxBufferLength?: number;
   maxMaxBufferLength?: number;
+  startLevel?: number | "auto";
+  lowLatencyMode?: boolean;
+}
+
+export interface DashOptions {
+  capLevelToPlayerSize?: boolean;
+  maxBufferLength?: number;
   startLevel?: number | "auto";
   lowLatencyMode?: boolean;
 }
@@ -72,6 +80,8 @@ export interface KyrspectOptions {
   tracks?: KyrspectTextTrackInput[];
   captions?: CaptionOptions;
   hls?: HlsOptions;
+  dash?: DashOptions;
+  drm?: DrmOptions;
   live?: LiveOptions;
   ui?: UIPlayerOptions;
   language?: string;
@@ -102,6 +112,7 @@ export const DEFAULT_OPTIONS: Required<
   >
 > & {
   hls: Omit<HlsOptions, "forceEngine">;
+  dash: Required<DashOptions>;
   live: Required<LiveOptions>;
   retry: Required<RetryOptions>;
   captions: Required<CaptionOptions>;
@@ -133,6 +144,12 @@ export const DEFAULT_OPTIONS: Required<
     capLevelToPlayerSize: true,
     maxBufferLength: 30,
     maxMaxBufferLength: 60,
+    startLevel: "auto",
+    lowLatencyMode: false,
+  },
+  dash: {
+    capLevelToPlayerSize: true,
+    maxBufferLength: 30,
     startLevel: "auto",
     lowLatencyMode: false,
   },

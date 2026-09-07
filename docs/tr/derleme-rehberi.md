@@ -82,3 +82,5 @@ npm run dev:vanilla
 # React demo uygulamasını başlatın
 npm run dev:react
 ```
+
+Kyrspect Apache License 2.0 ile yayınlanır. [LICENSE](../../LICENSE) ve [NOTICE](../../NOTICE).

@@ -9,5 +9,5 @@ export default defineConfig({
   treeshake: true,
   target: "es2022",
   splitting: false,
-  external: ["hls.js", "@kyrspect/ui"],
+  external: ["hls.js", "dashjs", "@kyrspect/ui"],
 });

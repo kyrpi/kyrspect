@@ -8,7 +8,8 @@
 
 ```typescript
 interface KyrspectWasmOptions {
-  src?: string | { src: string; type?: string; isLive?: boolean };
+  src?: string | { src: string; type?: string; isLive?: boolean; drm?: DrmOptions };
+  drm?: DrmOptions; // optional; omitted = default playback, no EME
   autoplay?: boolean;
   muted?: boolean;
   volume?: number; // 0.0 - 1.0
@@ -75,7 +76,7 @@ Subscribe using `player.on(event, handler)`:
 
 | Event | Payload | Description |
 |---|---|---|
-| `ready` | `void` | Player and Wasm engine initialized |
+| `ready` | `void` | UI attached and optional initial `src` load started (WASM ABR may still be starting) |
 | `play` | `void` | Playback started |
 | `pause` | `void` | Playback paused |
 | `playing` | `void` | Media actively playing |
@@ -90,3 +91,5 @@ Subscribe using `player.on(event, handler)`:
 | `statsupdate` | `PlayerStats` | Real-time telemetry tick (1s interval) |
 | `error` | `{ message, fatal }` | Error occurred |
 | `destroy` | `void` | Player destroyed |
+
+`drm` is documented in [DRM](./drm.md). `load()` classifies `.m3u8` / `.mpd` without waiting for WASM ([startup](./startup.md)).

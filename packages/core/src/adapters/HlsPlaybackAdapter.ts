@@ -1,3 +1,4 @@
+import type Hls from "hls.js";
 import type { ErrorData, Level } from "hls.js";
 import type { PlaybackAdapter, AdapterContext, NetworkRequest } from "../types/adapter";
 import type { ResolvedSource, KyrspectSource } from "../types/source";
@@ -5,15 +6,17 @@ import type { KyrspectQuality } from "../types/quality";
 import type { KyrspectAudioTrack, KyrspectSubtitleTrack } from "../types/tracks";
 import { KyrspectError } from "../errors/KyrspectError";
 import { nativeHlsSupport } from "../utils/source";
-import { getHlsConstructor, isHlsJsSupported } from "../utils/hls";
+import { loadHlsConstructor, isHlsJsSupported } from "../utils/hls";
 import { resetMediaElement } from "../utils/media";
 import { findQuality, inferQualityReason, qualityLabel } from "../abr/quality";
+import type { DrmSession } from "../drm/DrmManager";
 
-const Hls = getHlsConstructor();
+type HlsConstructor = typeof Hls;
+type HlsInstance = InstanceType<HlsConstructor>;
 
 interface Engine {
   kind: "native" | "hls.js";
-  hls: InstanceType<typeof Hls> | null;
+  hls: HlsInstance | null;
 }
 
 export class HlsPlaybackAdapter implements PlaybackAdapter {
@@ -47,17 +50,23 @@ export class HlsPlaybackAdapter implements PlaybackAdapter {
     this.loadSettled = false;
     this.mode = context.options.quality === "auto" || context.options.quality == null ? "auto" : "manual";
 
-    const engine = this.chooseEngine(video, context);
-    this.engine = engine;
-    context.debug("HLS", `Using ${engine.kind} engine`);
+    const session = context.drm?.resolve(source, context.options) ?? null;
+    const kind = this.chooseEngineKind(video, context, session);
+    const system = session?.providers.map((item) => item.id).join("+");
+    context.debug("HLS", system ? `Using ${kind} engine with ${system}` : `Using ${kind} engine`);
 
-    if (engine.kind === "native") {
+    if (kind === "native") {
+      this.engine = { kind: "native", hls: null };
+      if (session && context.drm) {
+        context.drm.assertCompatible(session, "native-hls");
+        context.drm.attachNative(video, session);
+      }
       video.src = source.src;
       this.loadSettled = true;
       return;
     }
 
-    if (!engine.hls) {
+    if (kind !== "hls.js") {
       throw new KyrspectError({
         code: "hls-unavailable",
         category: "UNSUPPORTED_FORMAT",
@@ -65,36 +74,61 @@ export class HlsPlaybackAdapter implements PlaybackAdapter {
       });
     }
 
-    await this.attachHls(engine.hls, video, source.src, context);
+    const HlsCtor = await loadHlsConstructor();
+    if (typeof HlsCtor.isSupported === "function" && !HlsCtor.isSupported()) {
+      throw new KyrspectError({
+        code: "hls-unavailable",
+        category: "UNSUPPORTED_FORMAT",
+        message: "HLS playback is not supported in this browser.",
+      });
+    }
+
+    const hls = this.createHls(HlsCtor, context, video, session);
+    this.engine = { kind: "hls.js", hls };
+    await this.attachHls(HlsCtor, hls, video, source.src, context);
   }
 
-  private chooseEngine(video: HTMLVideoElement, context: AdapterContext): Engine {
+  private chooseEngineKind(
+    video: HTMLVideoElement,
+    context: AdapterContext,
+    session: DrmSession | null,
+  ): "native" | "hls.js" | "none" {
     const forced = context.options.hls?.forceEngine;
     const native = nativeHlsSupport(video);
     const nativeOk = native !== "none";
     const jsOk = isHlsJsSupported();
-    const preferNative = context.options.hls?.preferNative === true;
+    const hint = context.drm?.hlsEngineHint(session) ?? null;
+    const preferNative = context.options.hls?.preferNative === true && hint !== "mse";
 
-    if (forced === "native" && nativeOk) return { kind: "native", hls: null };
-    if (forced === "hls.js" && jsOk) return { kind: "hls.js", hls: this.createHls(context, video) };
-
-    if (jsOk && !preferNative) return { kind: "hls.js", hls: this.createHls(context, video) };
-    if (jsOk && native === "none") return { kind: "hls.js", hls: this.createHls(context, video) };
-    if (nativeOk) return { kind: "native", hls: null };
-    if (jsOk) return { kind: "hls.js", hls: this.createHls(context, video) };
-    return { kind: "hls.js", hls: null };
+    if (forced === "native" && nativeOk && hint !== "mse") return "native";
+    if (forced === "hls.js") return "hls.js";
+    if (jsOk && !preferNative) return "hls.js";
+    if (jsOk && native === "none") return "hls.js";
+    if (nativeOk && hint !== "mse") return "native";
+    if (jsOk) return "hls.js";
+    if (native === "none") return "hls.js";
+    return "none";
   }
 
-  private createHls(context: AdapterContext, video: HTMLVideoElement): InstanceType<typeof Hls> {
+  private createHls(
+    HlsCtor: HlsConstructor,
+    context: AdapterContext,
+    video: HTMLVideoElement,
+    session: DrmSession | null,
+  ): HlsInstance {
     const retry = context.options.retry;
     const live = context.options.live;
     const hlsOpts = context.options.hls;
     const headers = context.getHeaders();
     const hasHooks = Boolean(context.beforeRequest) || Object.keys(headers).length > 0;
     const playerSized = video.clientWidth > 0 && video.clientHeight > 0;
+    const drmConfig = session ? context.drm?.hlsConfig(session) : null;
+    const licenseXhrSetup = session ? context.drm?.licenseXhrSetup(session) : undefined;
 
-    return new Hls({
+    return new HlsCtor({
       enableWorker: true,
+      ...(drmConfig ?? {}),
+      ...(licenseXhrSetup ? { licenseXhrSetup } : {}),
       lowLatencyMode: Boolean(live?.lowLatency || hlsOpts?.lowLatencyMode),
       liveSyncDurationCount: live?.targetLatency ? undefined : 3,
       liveSyncDuration: live?.targetLatency,
@@ -137,7 +171,8 @@ export class HlsPlaybackAdapter implements PlaybackAdapter {
   }
 
   private attachHls(
-    hls: InstanceType<typeof Hls>,
+    HlsCtor: HlsConstructor,
+    hls: HlsInstance,
     video: HTMLVideoElement,
     src: string,
     context: AdapterContext,
@@ -155,7 +190,7 @@ export class HlsPlaybackAdapter implements PlaybackAdapter {
       };
 
       const onError = (_event: string, data: ErrorData) => {
-        this.handleError(data, reject);
+        this.handleError(HlsCtor, data, reject);
       };
 
       const onLevel = (_event: string, data: { level: number }) => {
@@ -170,16 +205,16 @@ export class HlsPlaybackAdapter implements PlaybackAdapter {
         }
       };
 
-      hls.on(Hls.Events.MANIFEST_PARSED, onParsed);
-      hls.on(Hls.Events.ERROR, onError);
-      hls.on(Hls.Events.LEVEL_SWITCHED, onLevel);
-      hls.on(Hls.Events.FRAG_LOADED, onFrag);
+      hls.on(HlsCtor.Events.MANIFEST_PARSED, onParsed);
+      hls.on(HlsCtor.Events.ERROR, onError);
+      hls.on(HlsCtor.Events.LEVEL_SWITCHED, onLevel);
+      hls.on(HlsCtor.Events.FRAG_LOADED, onFrag);
 
       this.unsubs.push(() => {
-        hls.off(Hls.Events.MANIFEST_PARSED, onParsed);
-        hls.off(Hls.Events.ERROR, onError);
-        hls.off(Hls.Events.LEVEL_SWITCHED, onLevel);
-        hls.off(Hls.Events.FRAG_LOADED, onFrag);
+        hls.off(HlsCtor.Events.MANIFEST_PARSED, onParsed);
+        hls.off(HlsCtor.Events.ERROR, onError);
+        hls.off(HlsCtor.Events.LEVEL_SWITCHED, onLevel);
+        hls.off(HlsCtor.Events.FRAG_LOADED, onFrag);
       });
 
       hls.loadSource(src);
@@ -187,14 +222,14 @@ export class HlsPlaybackAdapter implements PlaybackAdapter {
     });
   }
 
-  private handleError(data: ErrorData, reject: (error: unknown) => void): void {
+  private handleError(HlsCtor: HlsConstructor, data: ErrorData, reject: (error: unknown) => void): void {
     const context = this.context;
     const hls = this.engine?.hls;
-    const error = mapHlsError(data);
+    const error = mapHlsError(HlsCtor, data);
     context?.debug("HLS", data.details, data.type);
 
     if (!data.fatal) {
-      if (data.details === Hls.ErrorDetails.BUFFER_STALLED_ERROR) {
+      if (data.details === HlsCtor.ErrorDetails.BUFFER_STALLED_ERROR) {
         this.pendingReason = "buffer-risk";
       }
       return;
@@ -203,12 +238,12 @@ export class HlsPlaybackAdapter implements PlaybackAdapter {
     this.retryCount += 1;
     const max = this.context?.options.retry?.maxAttempts ?? 5;
     if (hls && this.retryCount <= max && error.recoverable) {
-      if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+      if (data.type === HlsCtor.ErrorTypes.NETWORK_ERROR) {
         this.pendingReason = "emergency";
         hls.startLoad();
         return;
       }
-      if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+      if (data.type === HlsCtor.ErrorTypes.MEDIA_ERROR) {
         this.pendingReason = "emergency";
         hls.recoverMediaError();
         return;
@@ -242,6 +277,7 @@ export class HlsPlaybackAdapter implements PlaybackAdapter {
   }
 
   async unload(): Promise<void> {
+    this.context?.drm?.detachNative();
     for (const off of this.unsubs) off();
     this.unsubs = [];
     if (this.engine?.hls) this.engine.hls.destroy();
@@ -355,23 +391,24 @@ function mapLevel(level: Level, index: number): KyrspectQuality {
   return quality;
 }
 
-function mapHlsError(data: ErrorData): KyrspectError {
+function mapHlsError(HlsCtor: HlsConstructor, data: ErrorData): KyrspectError {
   const details = String(data.details ?? "");
   const status = data.response?.code;
   const cors = status === 0 || /cors/i.test(details);
   let category: KyrspectError["category"] = "PLAYBACK_ERROR";
   if (cors) category = "CORS_ERROR";
+  else if (/key.?system|license|eme|widevine|drm/i.test(details)) category = "DRM_ERROR";
   else if (/manifest/i.test(details)) category = "MANIFEST_ERROR";
-  else if (data.type === Hls.ErrorTypes.NETWORK_ERROR) category = "NETWORK_ERROR";
+  else if (data.type === HlsCtor.ErrorTypes.NETWORK_ERROR) category = "NETWORK_ERROR";
   else if (/codec/i.test(details)) category = "CODEC_ERROR";
-  else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) category = "MEDIA_ERROR";
+  else if (data.type === HlsCtor.ErrorTypes.MEDIA_ERROR) category = "MEDIA_ERROR";
 
   return new KyrspectError({
     code: details || "hls-error",
     category,
     message: data.error?.message || `HLS error: ${details || data.type}`,
     fatal: Boolean(data.fatal),
-    recoverable: Boolean(data.fatal) && data.type !== Hls.ErrorTypes.MUX_ERROR,
+    recoverable: Boolean(data.fatal) && data.type !== HlsCtor.ErrorTypes.MUX_ERROR,
     originalError: data,
   });
 }

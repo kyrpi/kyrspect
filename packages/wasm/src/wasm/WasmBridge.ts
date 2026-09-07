@@ -66,8 +66,9 @@ export interface WasmSubtitleCue {
 
 export interface WasmSourceAnalysis {
   url: string;
-  media_type: "hls" | "mp4" | "webm" | "ogg" | "mediastream" | "blob" | "unknown";
+  media_type: "hls" | "dash" | "mp4" | "webm" | "ogg" | "mediastream" | "blob" | "unknown";
   is_hls: boolean;
+  is_dash: boolean;
   is_stream: boolean;
   probable_mime: string;
 }
@@ -390,15 +391,16 @@ export class WasmBridge {
     exports.kyrspect_wasm_free_string(resPtr);
 
     try {
-      return JSON.parse(json);
+      return normalizeSourceAnalysis(url, mime, JSON.parse(json) as WasmSourceAnalysis);
     } catch {
-      return {
+      return normalizeSourceAnalysis(url, mime, {
         url,
         media_type: "unknown",
         is_hls: false,
+        is_dash: false,
         is_stream: false,
         probable_mime: "video/mp4",
-      };
+      });
     }
   }
 
@@ -407,4 +409,30 @@ export class WasmBridge {
     this.destroyed = true;
     this.exports.kyrspect_wasm_destroy_player(this.playerId);
   }
+}
+
+function isDashHint(url: string, mime?: string): boolean {
+  const hint = (mime ?? "").toLowerCase();
+  if (hint.includes("dash+xml") || hint === "dash" || hint.includes("application/dash")) return true;
+  try {
+    const parsed = new URL(url, "https://kyrspect.local");
+    return /\.mpd($|[?#])/i.test(parsed.pathname + parsed.search);
+  } catch {
+    return /\.mpd($|[?#])/i.test(url);
+  }
+}
+
+function normalizeSourceAnalysis(url: string, mime: string | undefined, parsed: WasmSourceAnalysis): WasmSourceAnalysis {
+  if (parsed.media_type === "dash" || parsed.is_dash || isDashHint(url, mime)) {
+    return {
+      ...parsed,
+      url: parsed.url || url,
+      media_type: "dash",
+      is_dash: true,
+      is_hls: false,
+      is_stream: true,
+      probable_mime: parsed.probable_mime || "application/dash+xml",
+    };
+  }
+  return { ...parsed, url: parsed.url || url, is_dash: Boolean(parsed.is_dash) };
 }

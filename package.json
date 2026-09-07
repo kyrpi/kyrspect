@@ -2,6 +2,7 @@
   "name": "kyrspect",
   "private": true,
   "version": "0.1.0",
+  "license": "Apache-2.0",
   "description": "Modern video playback for the web.",
   "homepage": "https://github.com/kyrpi/kyrspect#readme",
   "repository": {
@@ -27,6 +28,7 @@
     "dev:vanilla": "npm run dev -w @kyrspect/example-vanilla",
     "dev:react": "npm run dev -w @kyrspect/example-react",
     "dev:hls": "npm run dev -w @kyrspect/example-hls",
+    "dev:dash": "npm run dev -w @kyrspect/example-dash",
     "dev:live": "npm run dev -w @kyrspect/example-livestream",
     "clean": "npm run clean --workspaces --if-present"
   },

@@ -14,7 +14,7 @@ Kyrspect's WebAssembly architecture is designed for maximum throughput, predicta
                                │
 ┌──────────────────────────────▼──────────────────────────────┐
 │             KyrspectWasm JavaScript / TS Bridge             │
-│       (HTMLVideoElement, Event Emitter, HLS Adapter)        │
+│       (HTMLVideoElement, Event Emitter, HLS / DASH Adapter) │
 └──────────────────────────────┬──────────────────────────────┘
                                │ (Zero-overhead C-ABI FFI)
 ┌──────────────────────────────▼──────────────────────────────┐
@@ -53,3 +53,14 @@ Kyrspect's WebAssembly architecture is designed for maximum throughput, predicta
 5. **Subtitle Parser (`src/subtitles.rs`)**:
    - High-speed zero-allocation string parsing of WebVTT timestamps and text.
    - Binary search timeline indexing for $O(\log N)$ cue lookups.
+
+---
+
+## JavaScript bridge (`KyrspectWasm`)
+
+The Rust module is not on the first-paint critical path.
+
+- UI mounts immediately. WASM instantiate runs in the background.
+- HLS / DASH adapters are created on first use.
+- Source type is resolved in JS (MIME, `.m3u8`, `.mpd`). `analyzeSource` is used only when there is no hint.
+- DRM on the WASM player is optional and mirrors core: no license URL means the default playback path. See [DRM](./drm.md) and [startup](./startup.md).

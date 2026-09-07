@@ -12,8 +12,11 @@ import {
 import { EventEmitter } from "../events/EventEmitter";
 import { normalizeError, userFacingErrorMessage } from "../errors/KyrspectError";
 import { PlaybackManager } from "../playback/PlaybackManager";
+import { DrmManager } from "../drm/DrmManager";
+import { needsDrmManager } from "../drm/resolve";
 import { NativePlaybackAdapter } from "../adapters/NativePlaybackAdapter";
 import { HlsPlaybackAdapter } from "../adapters/HlsPlaybackAdapter";
+import { DashPlaybackAdapter } from "../adapters/DashPlaybackAdapter";
 import { MediaStreamPlaybackAdapter } from "../adapters/MediaStreamPlaybackAdapter";
 import { FullscreenManager } from "../media/FullscreenManager";
 import { PiPManager } from "../media/PiPManager";
@@ -53,8 +56,8 @@ function mergeOptions(input?: KyrspectOptions): KyrspectOptions {
 export class Kyrspect {
   static readonly version = VERSION;
 
-  static async getCapabilities(): Promise<KyrspectCapabilitySnapshot> {
-    return KyrspectCapabilities.probe();
+  static async getCapabilities(options?: { drm?: boolean }): Promise<KyrspectCapabilitySnapshot> {
+    return KyrspectCapabilities.probe(undefined, options);
   }
 
   readonly media: HTMLVideoElement;
@@ -64,6 +67,7 @@ export class Kyrspect {
   private readonly events = new EventEmitter<KyrspectEventMap>();
   private readonly state = new StateStore();
   private readonly playback: PlaybackManager;
+  private drm: DrmManager | null = null;
   private readonly fullscreen: FullscreenManager;
   private readonly pip: PiPManager;
   private readonly keyboard: KeyboardManager | null;
@@ -104,6 +108,7 @@ export class Kyrspect {
 
     this.playback = new PlaybackManager([
       new MediaStreamPlaybackAdapter(),
+      new DashPlaybackAdapter(),
       new HlsPlaybackAdapter(),
       new NativePlaybackAdapter(),
     ]);
@@ -362,7 +367,7 @@ export class Kyrspect {
 
     try {
       const resolved = resolveSourceSync(source, this.media);
-      const context = this.createAdapterContext();
+      const context = this.createAdapterContext(source);
       await this.playback.load(this.media, resolved, context);
       if (this.destroyed) return;
       this.subtitles.applyConfigTracks(this.optionsInternal.tracks);
@@ -413,6 +418,7 @@ export class Kyrspect {
     this.plugins.destroy();
     this.videoUnbind();
     this.playback.destroy();
+    this.drm?.destroy();
     this.events.destroy();
     this.bound.cleanupDom();
   }
@@ -588,7 +594,8 @@ export class Kyrspect {
       }
     }
 
-    const engine = qualities.length ? "HLS" : "Native";
+    const adapterName = this.playback.current?.name;
+    const engine = adapterName === "dash" ? "DASH" : adapterName === "hls" ? "HLS" : "Native";
     const flags = [
       engine,
       quality.mode,
@@ -676,13 +683,20 @@ export class Kyrspect {
     if (typeof prefs.playbackRate === "number") this.media.playbackRate = prefs.playbackRate;
   }
 
-  private createAdapterContext(): AdapterContext {
+  private ensureDrm(source?: SourceInput): DrmManager | null {
+    if (!needsDrmManager(source, this.optionsInternal)) return this.drm;
+    this.drm ??= new DrmManager();
+    return this.drm;
+  }
+
+  private createAdapterContext(source?: SourceInput): AdapterContext {
     return {
       options: this.optionsInternal,
       events: this.events,
       debug: (namespace, ...args) => this.logger.info(namespace, ...args),
       getHeaders: () => ({ ...this.optionsInternal.network?.headers }),
       beforeRequest: this.optionsInternal.network?.beforeRequest,
+      drm: this.ensureDrm(source),
     };
   }
 

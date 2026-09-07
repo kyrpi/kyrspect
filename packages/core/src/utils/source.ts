@@ -1,9 +1,14 @@
 import type { SourceInput, KyrspectSource, ResolvedSource } from "../types/source";
 
 const HLS_MIME = /application\/(vnd\.apple\.mpegurl|x-mpegURL)/i;
+const DASH_MIME = /application\/dash\+xml/i;
 
 export function isHlsMime(mimeType?: string): boolean {
   return Boolean(mimeType && HLS_MIME.test(mimeType));
+}
+
+export function isDashMime(mimeType?: string): boolean {
+  return Boolean(mimeType && DASH_MIME.test(mimeType));
 }
 
 export function isProbablyHlsUrl(url: string): boolean {
@@ -12,6 +17,15 @@ export function isProbablyHlsUrl(url: string): boolean {
     return /\.m3u8($|[?#])/i.test(parsed.pathname + parsed.search);
   } catch {
     return /\.m3u8($|[?#])/i.test(url);
+  }
+}
+
+export function isProbablyDashUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url, typeof location === "undefined" ? "https://kyrspect.local" : location.href);
+    return /\.mpd($|[?#])/i.test(parsed.pathname + parsed.search);
+  } catch {
+    return /\.mpd($|[?#])/i.test(url);
   }
 }
 
@@ -64,25 +78,35 @@ export function resolveSourceSync(
   if (source.type === "media-stream") return source;
   if (source.type === "blob") return source;
   if (source.type === "hls") return source;
+  if (source.type === "dash") return source;
   if (source.type === "video") return source;
 
   const mime = "mimeType" in source ? source.mimeType : undefined;
+  const drm = "drm" in source ? source.drm : undefined;
+
   if (isHlsMime(mime)) {
-    return { type: "hls", src: getSourceUrl(source) ?? "", mimeType: mime };
+    return { type: "hls", src: getSourceUrl(source) ?? "", mimeType: mime, drm };
+  }
+  if (isDashMime(mime)) {
+    return { type: "dash", src: getSourceUrl(source) ?? "", mimeType: mime, drm };
   }
 
   if (mime && video && video.canPlayType(mime) !== "") {
-    return { type: "video", src: getSourceUrl(source) ?? "", mimeType: mime };
+    return { type: "video", src: getSourceUrl(source) ?? "", mimeType: mime, drm };
   }
 
   const url = getSourceUrl(source) ?? "";
   if (url && isProbablyHlsUrl(url)) {
-    return { type: "hls", src: url, mimeType: mime ?? "application/vnd.apple.mpegurl" };
+    return { type: "hls", src: url, mimeType: mime ?? "application/vnd.apple.mpegurl", drm };
+  }
+  if (url && isProbablyDashUrl(url)) {
+    return { type: "dash", src: url, mimeType: mime ?? "application/dash+xml", drm };
   }
 
   return {
     type: "video",
     src: url,
     mimeType: mime,
+    drm,
   };
 }

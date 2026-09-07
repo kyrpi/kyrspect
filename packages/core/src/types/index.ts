@@ -19,9 +19,21 @@ export { DEFAULT_STATS_FIELDS } from "./stats";
 export type { KyrspectPlugin } from "./plugin";
 export type { PlaybackAdapter, AdapterContext, NetworkRequest } from "./adapter";
 export type {
+  DrmOptions,
+  DrmLicenseRequest,
+  DrmRobustness,
+  DrmSystemId,
+  WidevineOptions,
+  PlayReadyOptions,
+  FairPlayOptions,
+  CencDrmOptions,
+} from "./drm";
+export { WIDEVINE_KEY_SYSTEM, PLAYREADY_KEY_SYSTEM, FAIRPLAY_KEY_SYSTEM } from "./drm";
+export type {
   KyrspectOptions,
   CaptionOptions,
   HlsOptions,
+  DashOptions,
   LiveOptions,
   RetryOptions,
   NetworkOptions,

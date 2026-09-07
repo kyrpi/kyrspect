@@ -1,5 +1,7 @@
 import {
+  isDashMime,
   isHlsMime,
+  isProbablyDashUrl,
   isProbablyHlsUrl,
   normalizeSource,
   resolveSourceSync,
@@ -28,6 +30,29 @@ describe("source detection", () => {
     expect(isProbablyHlsUrl("https://cdn.example/video.mp4")).toBe(false);
     const resolved = resolveSourceSync("https://cdn.example/live/master.m3u8?token=1");
     expect(resolved.type).toBe("hls");
+  });
+
+  it("detects DASH from MIME type and MPD URL hints", () => {
+    expect(isDashMime("application/dash+xml")).toBe(true);
+    expect(isDashMime("application/vnd.apple.mpegurl")).toBe(false);
+    expect(isProbablyDashUrl("https://cdn.example/live/manifest.mpd")).toBe(true);
+    expect(isProbablyDashUrl("https://cdn.example/video.mp4")).toBe(false);
+    expect(
+      resolveSourceSync({
+        src: "https://cdn.example/asset",
+        mimeType: "application/dash+xml",
+      }).type,
+    ).toBe("dash");
+    expect(resolveSourceSync("https://cdn.example/live/manifest.mpd?token=1").type).toBe("dash");
+  });
+
+  it("keeps explicit DASH sources", () => {
+    const resolved = resolveSourceSync({
+      type: "dash",
+      src: "https://cdn.example/stream.bin",
+      mimeType: "application/dash+xml",
+    });
+    expect(resolved).toMatchObject({ type: "dash", mimeType: "application/dash+xml" });
   });
 
   it("keeps explicit progressive sources", () => {

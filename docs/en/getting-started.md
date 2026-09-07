@@ -67,6 +67,8 @@ const player = new KyrspectWasm("#player", {
 player.play();
 ```
 
+HLS (`.m3u8`) and DASH (`.mpd`) are detected in JavaScript. Do not wait for WASM to classify those URLs. DRM is optional — omit `drm` unless you have a license server. Details: [DRM](./drm.md), [startup](./startup.md).
+
 ---
 
 ## HTML Setup

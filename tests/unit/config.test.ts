@@ -10,6 +10,8 @@ describe("config merging", () => {
     expect(merged.volume).toBe(1);
     expect(merged.quality).toBe("auto");
     expect(merged.hls.preferNative).toBe(false);
+    expect(merged.dash.capLevelToPlayerSize).toBe(true);
+    expect(merged.dash.startLevel).toBe("auto");
   });
 
   it("deep-merges nested live and retry options", () => {

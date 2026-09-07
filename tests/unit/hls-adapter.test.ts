@@ -85,6 +85,7 @@ describe("HLS adapter", () => {
       events,
       debug: () => undefined,
       getHeaders: () => ({}),
+      drm: null,
     };
     await adapter.load(video, { type: "hls", src: "https://example.com/master.m3u8" }, context);
     expect(qualities).toHaveBeenCalledWith([360, 720, 1080]);

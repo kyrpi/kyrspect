@@ -14,7 +14,7 @@ Kyrspect WebAssembly mimarisi; düşük bellek tüketimi, yüksek işlem hacmi v
                                │
 ┌──────────────────────────────▼──────────────────────────────┐
 │             KyrspectWasm JavaScript / TS Bridge             │
-│       (HTMLVideoElement, Event Emitter, HLS Adaptörü)       │
+│       (HTMLVideoElement, Event Emitter, HLS / DASH Adaptörü)│
 └──────────────────────────────┬──────────────────────────────┘
                                │ (Sıfır ek yük C-ABI FFI Köprüsü)
 ┌──────────────────────────────▼──────────────────────────────┐
@@ -52,3 +52,14 @@ Kyrspect WebAssembly mimarisi; düşük bellek tüketimi, yüksek işlem hacmi v
 
 5. **WebVTT Altyazı Motoru (`src/subtitles.rs`)**:
    - Yüksek hızlı altyazı ayrıştırma ve zaman çizelgesinde $O(\log N)$ sürede ikili arama ile anlık cue bulma.
+
+---
+
+## JavaScript köprüsü (`KyrspectWasm`)
+
+Rust modülü ilk boyamanın kritik yolunda değildir.
+
+- Arayüz hemen bağlanır. WASM örneği arka planda oluşur.
+- HLS / DASH adaptörleri ilk kullanımda oluşturulur.
+- Kaynak türü JS’te çözülür (MIME, `.m3u8`, `.mpd`). `analyzeSource` yalnızca ipucu yoksa çalışır.
+- WASM oynatıcıda DRM isteğe bağlıdır ve core ile aynıdır: lisans URL’si yoksa varsayılan oynatma yolu kullanılır. [DRM](./drm.md) ve [yükleme](./yukleme.md).

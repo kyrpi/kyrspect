@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { WasmBridge } from "../../packages/wasm/src/wasm/WasmBridge";
+import { detectMediaKind, needsWasmSourceHint } from "../../packages/wasm/src/source";
+import { hasConfiguredDrm, mergeDrm } from "../../packages/wasm/src/drm";
 
 describe("WebAssembly Core Engine (@kyrspect/wasm)", () => {
   it("initializes WasmBridge and tracks player state", async () => {
@@ -117,5 +119,28 @@ Second cue
     const mp4 = await WasmBridge.analyzeSource("https://example.com/video.mp4?auth=token");
     expect(mp4.is_hls).toBe(false);
     expect(mp4.media_type).toBe("mp4");
+
+    const dash = await WasmBridge.analyzeSource("https://example.com/stream/manifest.mpd");
+    expect(dash.media_type).toBe("dash");
+    expect(dash.is_dash).toBe(true);
+    expect(dash.is_hls).toBe(false);
+  });
+
+  it("detects HLS and DASH without waiting for WASM", () => {
+    expect(detectMediaKind("https://cdn.example/live.m3u8")).toBe("hls");
+    expect(detectMediaKind("https://cdn.example/manifest.mpd")).toBe("dash");
+    expect(detectMediaKind("https://cdn.example/video.mp4")).toBe("native");
+    expect(detectMediaKind("https://cdn.example/asset", "application/dash+xml")).toBe("dash");
+    expect(needsWasmSourceHint("https://cdn.example/asset")).toBe(true);
+    expect(needsWasmSourceHint("https://cdn.example/video.mp4")).toBe(false);
+  });
+
+  it("keeps DRM off unless a license URL is configured", () => {
+    expect(hasConfiguredDrm(undefined)).toBe(false);
+    expect(hasConfiguredDrm({})).toBe(false);
+    expect(mergeDrm({ widevine: { licenseUrl: "" } }, undefined)).toBeNull();
+    expect(mergeDrm(undefined, { widevine: { licenseUrl: "https://license.example/wv" } })?.widevine?.licenseUrl).toBe(
+      "https://license.example/wv",
+    );
   });
 });

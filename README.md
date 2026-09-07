@@ -1,14 +1,16 @@
 # Kyrspect
 
 [![GitHub](https://img.shields.io/badge/GitHub-kyrpi%2Fkyrspect-blue?logo=github)](https://github.com/kyrpi/kyrspect)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0)
 [![WebAssembly](https://img.shields.io/badge/WebAssembly-Rust%20Engine-6366f1?logo=webassembly)](https://github.com/kyrpi/kyrspect)
 
 Modern video playback for the web — available in both high-performance **WebAssembly (`@kyrspect/wasm`)** and lightweight TypeScript (`@kyrspect/core`).
 
 Open Source at: [https://github.com/kyrpi/kyrspect](https://github.com/kyrpi/kyrspect)
 
-Kyrspect is a framework-agnostic video playback engine. It sits on top of `HTMLVideoElement`, plays progressive media and HLS through adapters, and ships an optional default UI. React is a thin wrapper around the core engine — it never owns playback.
+Documentation: [docs/](./docs/README.md) (English and Turkish). Roadmap: [TODO.md](./TODO.md). Licensed under [Apache License 2.0](./LICENSE).
+
+Kyrspect is a framework-agnostic video playback engine. It sits on top of `HTMLVideoElement`, plays progressive media, HLS, and DASH through adapters, and ships an optional default UI. React is a thin wrapper around the core engine — it never owns playback.
 
 ```text
 HTMLVideoElement
@@ -17,7 +19,7 @@ Kyrspect Core
        ↓
 Playback Adapters
        ↓
-HLS / Native / MediaStream / Progressive
+HLS / DASH / Native / MediaStream / Progressive
        ↓
 UI
        ↓
@@ -162,7 +164,105 @@ const player = new Kyrspect('#player', {
 });
 ```
 
-String URLs are resolved with MIME type, capability detection, and only then playlist URL hints. Extension sniffing is never the sole signal.
+String URLs are resolved with MIME type, capability detection, and only then playlist URL hints. Extension sniffing is never the sole signal. **hls.js is imported only when the MSE HLS engine is chosen** — progressive files do not load it.
+
+## DASH
+
+MPEG-DASH is a first-class source, isolated behind `DashPlaybackAdapter` and [dash.js](https://github.com/Dash-Industry-Forum/dash.js). There is no native browser DASH engine — playback always goes through MSE when available.
+
+```javascript
+const player = new Kyrspect('#player', {
+  src: {
+    type: 'dash',
+    src: 'https://example.com/manifest.mpd',
+  },
+  dash: {
+    capLevelToPlayerSize: true,
+    startLevel: 'auto',
+  },
+  live: {
+    lowLatency: true,
+    targetLatency: 3,
+  },
+});
+```
+
+`.mpd` URLs and `application/dash+xml` MIME types resolve to DASH automatically. Quality, audio, subtitle, and live APIs are the same as HLS. **dash.js is imported only when a DASH source is loaded.**
+
+## DRM
+
+Full notes: [docs/en/drm.md](./docs/en/drm.md) · [docs/tr/drm.md](./docs/tr/drm.md).
+
+Playback adapters only load HLS or DASH. Key systems live in `DrmManager`:
+
+```text
+Kyrspect Core
+  ├── PlaybackAdapter
+  │    ├── HLS
+  │    └── DASH
+  └── DRMManager
+       ├── Widevine
+       ├── PlayReady
+       └── FairPlay
+```
+
+DRM is optional. If `drm` is omitted (or has no license URL), playback stays on the default HLS / DASH / progressive path — `DrmManager` is not created and no EME setup runs.
+
+Kyrspect does not decrypt content. When DRM is configured, it sets up dash.js / hls.js / native EME with your license server.
+
+```javascript
+const player = new Kyrspect('#player', {
+  src: { type: 'dash', src: 'https://example.com/encrypted.mpd' },
+  drm: {
+    preferred: 'widevine',
+    widevine: {
+      licenseUrl: 'https://license.example/widevine',
+      headers: { Authorization: 'Bearer <token>' },
+    },
+    playready: {
+      licenseUrl: 'https://license.example/playready',
+    },
+  },
+});
+```
+
+FairPlay is HLS-only (Safari native or hls.js) and needs a certificate URL:
+
+```javascript
+drm: {
+  fairplay: {
+    licenseUrl: 'https://license.example/fairplay',
+    certificateUrl: 'https://license.example/fps.cer',
+  },
+}
+```
+
+A source can override player-level license URLs (headers are merged). `beforeLicenseRequest` can add per-request headers. Default `getCapabilities()` skips CDM probes; pass `{ drm: true }` for `widevine` / `playready` / `fairplay`.
+
+The same optional `drm` object is accepted by `@kyrspect/wasm`. If it is missing, WASM stays on the default playback path.
+
+## Startup
+
+Load-time notes: [docs/en/startup.md](./docs/en/startup.md) · [docs/tr/yukleme.md](./docs/tr/yukleme.md).
+
+Unencrypted playback does not construct DRM, does not probe CDMs, and does not download hls.js or dash.js unless that format is actually used. `@kyrspect/wasm` attaches UI before the WASM module is ready and classifies `.m3u8` / `.mpd` in JavaScript.
+
+## WebAssembly
+
+```bash
+npm install @kyrspect/wasm
+```
+
+```javascript
+import { KyrspectWasm } from '@kyrspect/wasm';
+
+const player = new KyrspectWasm('#player', {
+  src: 'https://example.com/master.m3u8',
+  controls: true,
+});
+```
+
+WASM owns ABR, live drift, stats, and VTT parsing. HLS / DASH still run in JS adapters (`window.Hls` / `window.dashjs` when present). See [architecture](./docs/en/architecture.md).
 
 ## Quality Selection
 
@@ -178,11 +278,11 @@ player.on('qualitychange', (event) => {
 });
 ```
 
-Auto mode uses hls.js ABR with Kyrspect’s own quality API on top. Manual selection overrides ABR; Auto is always available again.
+Auto mode uses the active adapter’s ABR (hls.js or dash.js) with Kyrspect’s own quality API on top. Manual selection overrides ABR; Auto is always available again.
 
 ## Subtitles
 
-WebVTT tracks can be passed in config. HLS subtitle and audio tracks are also collected from the active adapter.
+WebVTT tracks can be passed in config. HLS and DASH subtitle and audio tracks are also collected from the active adapter.
 
 ```javascript
 const player = new Kyrspect('#player', {
@@ -260,12 +360,13 @@ Capabilities:
 
 ```ts
 const capabilities = await Kyrspect.getCapabilities();
-// { h264, hevc, vp9, av1, hls, mse, pip, fullscreen, ... }
+const drmCaps = await Kyrspect.getCapabilities({ drm: true });
+// { h264, hevc, vp9, av1, hls, dash, eme, mse, ... } — CDM flags need { drm: true }
 ```
 
 ## Browser Support
 
-Current Chrome, Edge, Firefox, and Safari. Features are gated by capability detection, not browser sniffing. Missing Picture-in-Picture, Fullscreen, MSE, or HLS disables that feature instead of breaking the player.
+Current Chrome, Edge, Firefox, and Safari. Features are gated by capability detection, not browser sniffing. Missing Picture-in-Picture, Fullscreen, MSE, HLS, or DASH disables that feature instead of breaking the player.
 
 ## Development
 
@@ -277,10 +378,12 @@ overlay; `npm run diagnose:ui` dumps detailed element metrics for debugging.
 This is an npm workspaces monorepo.
 
 ```text
-packages/core    playback engine
+packages/core    TypeScript playback engine
+packages/wasm    Rust WASM engine + JS bridge
 packages/ui      default controls
 packages/react   React wrapper
-examples/        vanilla, react, hls, livestream, demo
+examples/        vanilla, react, hls, dash, livestream, demo
+docs/            English and Turkish documentation
 ```
 
 ```bash
@@ -297,6 +400,7 @@ npm run dev:demo      # diagnostic playground
 npm run dev:vanilla
 npm run dev:react
 npm run dev:hls
+npm run dev:dash
 npm run dev:live
 ```
 
@@ -312,7 +416,7 @@ npm run build
 
 ## Testing
 
-Vitest + jsdom covers EventEmitter, source resolution, capabilities, config merging, quality helpers, errors, plugins, HLS adapter mapping, subtitles, and destroy.
+Vitest + jsdom covers EventEmitter, source resolution, capabilities, config merging, quality helpers, errors, plugins, HLS and DASH adapter mapping (including the no-DRM path), optional DRM resolution, WASM source detection, subtitles, and destroy.
 
 ```bash
 npm test
@@ -320,4 +424,6 @@ npm test
 
 ## License
 
-MIT
+Copyright 2026 Kyrpi / Kyrspect contributors.
+
+Licensed under the [Apache License, Version 2.0](./LICENSE). See [NOTICE](./NOTICE).

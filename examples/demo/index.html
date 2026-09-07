@@ -21,13 +21,14 @@
           <a href="http://localhost:5174">Vanilla</a>
           <a href="http://localhost:5175">React</a>
           <a href="http://localhost:5176">HLS</a>
+          <a href="http://localhost:5178">DASH</a>
           <a href="http://localhost:5177">Live</a>
         </nav>
       </header>
       <main class="layout">
         <section class="stage">
           <form id="loader" class="loader">
-            <input id="url" type="url" placeholder="Paste an MP4, WebM, or HLS URL" autocomplete="off" />
+            <input id="url" type="url" placeholder="Paste an MP4, WebM, HLS, or DASH URL" autocomplete="off" />
             <button type="submit">Load</button>
           </form>
           <div class="presets">
@@ -37,6 +38,8 @@
             <button type="button" data-src="https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8">HLS VOD</button>
             <button type="button" data-src="https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8">HLS fMP4</button>
             <button type="button" data-src="https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8">Live HLS</button>
+            <button type="button" data-src="https://dash.akamaized.net/akamai/bbb_30fps/bbb_30fps.mpd">DASH VOD</button>
+            <button type="button" data-src="https://livesim.dashif.org/livesim2/ato_10/testpic_2s/Manifest.mpd">Live DASH</button>
             <label class="theme-picker" title="Player chrome">
               Layout
               <select id="layout">

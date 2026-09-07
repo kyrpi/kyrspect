@@ -4,6 +4,10 @@ export { WasmBridge } from "./wasm/WasmBridge";
 export { EventEmitter } from "./events/EventEmitter";
 export { NativePlaybackAdapter } from "./adapters/NativePlaybackAdapter";
 export { HlsPlaybackAdapter } from "./adapters/HlsPlaybackAdapter";
+export { DashPlaybackAdapter } from "./adapters/DashPlaybackAdapter";
+export { detectMediaKind } from "./source";
+export { hasConfiguredDrm, mergeDrm } from "./drm";
+export type { DrmOptions, CencDrmOptions, FairPlayOptions } from "./drm";
 
 export type {
   KyrspectWasmOptions,

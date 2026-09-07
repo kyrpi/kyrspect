@@ -10,6 +10,9 @@ import type {
   StatsFieldId,
   StatsCustomField,
 } from "@kyrspect/ui";
+import type { DrmOptions } from "../drm";
+
+export type { DrmOptions, CencDrmOptions, FairPlayOptions } from "../drm";
 
 export type {
   UIAspectRatio,
@@ -58,6 +61,7 @@ export interface KyrspectWasmSource {
   src: string;
   type?: string;
   isLive?: boolean;
+  drm?: DrmOptions;
 }
 
 export interface WasmTextTrackInput {
@@ -70,6 +74,7 @@ export interface WasmTextTrackInput {
 
 export interface KyrspectWasmOptions {
   src?: string | KyrspectWasmSource;
+  drm?: DrmOptions;
   autoplay?: boolean;
   muted?: boolean;
   volume?: number;

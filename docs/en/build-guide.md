@@ -82,3 +82,5 @@ npm run dev:vanilla
 # Run React demo
 npm run dev:react
 ```
+
+Kyrspect is published under the Apache License 2.0. See [LICENSE](../../LICENSE) and [NOTICE](../../NOTICE).

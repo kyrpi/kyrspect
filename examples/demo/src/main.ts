@@ -10,6 +10,9 @@ function statsFor(src: string): { id: string; fields: StatsField[] } {
   if (src.includes(".m3u8")) {
     return { id: "hls", fields: ["videoId", "viewport", "resolution", "codecs", "connection", "network", "buffer", "flags", "date"] };
   }
+  if (src.includes(".mpd") || src.toLowerCase().includes("dash")) {
+    return { id: "dash", fields: ["videoId", "viewport", "resolution", "codecs", "connection", "network", "buffer", "live", "flags", "date"] };
+  }
   if (src.includes(".webm")) {
     return { id: "webm", fields: ["videoId", "resolution", "volume", "buffer", "date"] };
   }
@@ -102,7 +105,12 @@ accent.addEventListener("input", () => {
 });
 
 const rows: Array<[string, () => string]> = [
-  ["Engine", () => (player.getQualities().length ? "HLS" : "Native")],
+  ["Engine", () => {
+    const src = url.value;
+    if (src.includes(".mpd") || src.toLowerCase().includes("dash")) return "DASH";
+    if (src.includes(".m3u8") || player.getQualities().length) return "HLS";
+    return "Native";
+  }],
   ["Codec", () => player.getQualities()[0]?.codecs || "—"],
   ["Resolution", () => {
     const q = player.getQuality();

@@ -152,6 +152,7 @@ export function userFacingErrorMessage(
     case "UNSUPPORTED_FORMAT":
     case "CODEC_ERROR":
       return text.errorUnsupported;
+    case "DRM_ERROR":
     case "MANIFEST_ERROR":
       return text.errorStream;
     default:
