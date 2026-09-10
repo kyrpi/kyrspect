@@ -3,6 +3,12 @@ export interface StoredPreferences {
   muted?: boolean;
   playbackRate?: number;
   subtitleLanguage?: string;
+  subtitleFont?: string;
+  subtitleColor?: string;
+  subtitleBgColor?: string;
+  subtitleFontSize?: string;
+  audioDualChannel?: boolean;
+  audioEqualizer?: string;
 }
 
 export class StorageManager {

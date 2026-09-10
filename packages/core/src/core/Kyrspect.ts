@@ -23,7 +23,8 @@ import { PiPManager } from "../media/PiPManager";
 import { KeyboardManager } from "../media/KeyboardManager";
 import { BufferMonitor } from "../media/BufferMonitor";
 import { LiveManager } from "../live/LiveManager";
-import { SubtitleManager, AudioManager } from "../captions/SubtitleManager";
+import { SubtitleManager, AudioManager, type SubtitleStyle } from "../captions/SubtitleManager";
+import { AudioEnhancer, type EqualizerPresetId } from "../media/AudioEnhancer";
 import { PluginManager } from "../plugins/PluginManager";
 import { StorageManager } from "../storage/StorageManager";
 import { StateStore } from "./PlayerState";
@@ -75,6 +76,7 @@ export class Kyrspect {
   private readonly live: LiveManager;
   private readonly subtitles: SubtitleManager;
   private readonly audio: AudioManager;
+  private readonly audioEnhancer: AudioEnhancer;
   private readonly plugins = new PluginManager<Kyrspect>();
   private readonly storage: StorageManager;
   private readonly logger = createLogger(() => Boolean(this.optionsInternal.debug));
@@ -137,6 +139,36 @@ export class Kyrspect {
       this.optionsInternal.captions?.mode ?? "native",
     );
     this.audio = new AudioManager(this.media, this.events, () => this.playback.current);
+    this.audioEnhancer = new AudioEnhancer(this.media);
+
+    if (this.optionsInternal.advanced?.audio?.dualChannel !== undefined) {
+      this.audioEnhancer.setDualChannel(this.optionsInternal.advanced.audio.dualChannel);
+    } else {
+      const prefs = this.storage.read();
+      if (typeof prefs.audioDualChannel === "boolean") {
+        this.audioEnhancer.setDualChannel(prefs.audioDualChannel);
+      }
+    }
+
+    if (this.optionsInternal.advanced?.audio?.equalizer) {
+      this.audioEnhancer.setEqualizerPreset(this.optionsInternal.advanced.audio.equalizer);
+    } else {
+      const prefs = this.storage.read();
+      if (prefs.audioEqualizer) {
+        this.audioEnhancer.setEqualizerPreset(prefs.audioEqualizer as EqualizerPresetId);
+      }
+    }
+
+    const subStyle: Partial<SubtitleStyle> = {
+      ...(this.optionsInternal.advanced?.subtitles ?? {}),
+    };
+    const prefs = this.storage.read();
+    if (prefs.subtitleFont) subStyle.fontFamily ??= prefs.subtitleFont;
+    if (prefs.subtitleColor) subStyle.color ??= prefs.subtitleColor;
+    if (prefs.subtitleBgColor) subStyle.backgroundColor ??= prefs.subtitleBgColor;
+    if (prefs.subtitleFontSize) subStyle.fontSize ??= prefs.subtitleFontSize;
+    this.subtitles.setStyle(subStyle);
+
     this.keyboard =
       this.optionsInternal.keyboard === false
         ? null
@@ -426,6 +458,7 @@ export class Kyrspect {
     this.fullscreen.destroy();
     this.pip.destroy();
     this.subtitles.destroy();
+    this.audioEnhancer.destroy();
     this.plugins.destroy();
     this.videoUnbind();
     this.playback.destroy();
@@ -512,6 +545,45 @@ export class Kyrspect {
 
   disableSubtitles(): void {
     this.subtitles.disable();
+  }
+
+  setSubtitleStyle(style: Partial<SubtitleStyle>): void {
+    this.subtitles.setStyle(style);
+    const current = this.subtitles.getStyle();
+    this.storage.write({
+      subtitleFont: current.fontFamily,
+      subtitleColor: current.color,
+      subtitleBgColor: current.backgroundColor,
+      subtitleFontSize: current.fontSize,
+    });
+  }
+
+  getSubtitleStyle(): SubtitleStyle {
+    return this.subtitles.getStyle();
+  }
+
+  setDualChannelAudio(enabled: boolean): void {
+    this.audioEnhancer.setDualChannel(enabled);
+    this.storage.write({ audioDualChannel: enabled });
+    this.events.emit("dualchannelchange", { enabled });
+  }
+
+  isDualChannelAudioEnabled(): boolean {
+    return this.audioEnhancer.isDualChannel();
+  }
+
+  setEqualizerPreset(preset: EqualizerPresetId): void {
+    this.audioEnhancer.setEqualizerPreset(preset);
+    this.storage.write({ audioEqualizer: preset });
+    this.events.emit("equalizerchange", { preset });
+  }
+
+  getEqualizerPreset(): EqualizerPresetId {
+    return this.audioEnhancer.getEqualizerPreset();
+  }
+
+  getAudioEnhancer(): AudioEnhancer {
+    return this.audioEnhancer;
   }
 
   getAudioTracks() {

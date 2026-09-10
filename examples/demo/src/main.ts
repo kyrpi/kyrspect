@@ -29,6 +29,12 @@ function sourceWithStats(src: string) {
 
 const player = new Kyrspect("#player", {
   src: sourceWithStats(DEFAULT_SRC),
+  tracks: [
+    { src: "/sample.vtt", kind: "subtitles", label: "Türkçe", lang: "tr", default: true },
+  ],
+  captions: {
+    mode: "custom",
+  },
   controls: true,
   autoplay: true,
   muted: true,

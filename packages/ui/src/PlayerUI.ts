@@ -66,7 +66,18 @@ function el<K extends keyof HTMLElementTagNameMap>(
   return node;
 }
 
-type MenuView = "root" | "quality" | "captions" | "rate" | "audio";
+type MenuView =
+  | "root"
+  | "quality"
+  | "captions"
+  | "rate"
+  | "audio"
+  | "advanced"
+  | "advanced-subtitles"
+  | "advanced-sub-font"
+  | "advanced-sub-color"
+  | "advanced-sub-bg"
+  | "advanced-equalizer";
 
 export function attachDefaultUI(player: PlayerLike, options: UIOptions = {}): PlayerUIHandle {
   injectStyles();
@@ -347,6 +358,73 @@ export function attachDefaultUI(player: PlayerLike, options: UIOptions = {}): Pl
     menu.dataset.view = menuView;
     syncMenuChrome();
     menu.replaceChildren();
+
+    const subtitleFonts = [
+      { id: "default", label: labels.fontDefault, value: "inherit" },
+      { id: "sans", label: labels.fontSans, value: "Arial, Helvetica, sans-serif" },
+      { id: "serif", label: labels.fontSerif, value: "Georgia, 'Times New Roman', serif" },
+      { id: "mono", label: labels.fontMono, value: "'Roboto Mono', 'Courier New', monospace" },
+      { id: "cursive", label: labels.fontCursive, value: "'Trebuchet MS', 'Comic Sans MS', cursive" },
+    ];
+
+    const subtitleColors = [
+      { id: "white", label: labels.colorWhite, value: "#ffffff" },
+      { id: "yellow", label: labels.colorYellow, value: "#ffff00" },
+      { id: "green", label: labels.colorGreen, value: "#00ff00" },
+      { id: "cyan", label: labels.colorCyan, value: "#00ffff" },
+      { id: "red", label: labels.colorRed, value: "#ff3b30" },
+    ];
+
+    const subtitleBgs = [
+      { id: "black-semi", label: labels.bgBlackSemi, value: "rgba(8, 8, 8, 0.75)" },
+      { id: "black-solid", label: labels.bgBlackSolid, value: "#000000" },
+      { id: "transparent", label: labels.bgTransparent, value: "transparent" },
+      { id: "dark-blue", label: labels.bgDarkBlue, value: "rgba(10, 25, 47, 0.85)" },
+      { id: "dark-gray", label: labels.bgDarkGray, value: "rgba(45, 45, 45, 0.85)" },
+    ];
+
+    const equalizerOptions: Array<{ id: string; label: string }> = [
+      { id: "flat", label: labels.eqFlat },
+      { id: "bass-boost", label: labels.eqBassBoost },
+      { id: "bass-reducer", label: labels.eqBassReducer },
+      { id: "treble-boost", label: labels.eqTrebleBoost },
+      { id: "vocal", label: labels.eqVocal },
+      { id: "rock", label: labels.eqRock },
+      { id: "pop", label: labels.eqPop },
+      { id: "classical", label: labels.eqClassical },
+      { id: "electronic", label: labels.eqElectronic },
+    ];
+
+    const getSubStyle = () => {
+      const fromPlayer = player.getSubtitleStyle ? player.getSubtitleStyle() : {};
+      return {
+        fontFamily: fromPlayer.fontFamily ?? "inherit",
+        color: fromPlayer.color ?? "#ffffff",
+        backgroundColor: fromPlayer.backgroundColor ?? "rgba(8, 8, 8, 0.75)",
+      };
+    };
+
+    const setSubStyle = (patch: Record<string, string | undefined>) => {
+      player.setSubtitleStyle?.(patch);
+      if (patch.fontFamily) root.style.setProperty("--kyrspect-sub-font-family", patch.fontFamily);
+      if (patch.color) root.style.setProperty("--kyrspect-sub-color", patch.color);
+      if (patch.backgroundColor) root.style.setProperty("--kyrspect-sub-bg-color", patch.backgroundColor);
+    };
+
+    const isDualChannel = () => {
+      return player.isDualChannelAudioEnabled ? player.isDualChannelAudioEnabled() : false;
+    };
+    const setDualChannel = (enabled: boolean) => {
+      player.setDualChannelAudio?.(enabled);
+    };
+
+    const getEqPreset = () => {
+      return player.getEqualizerPreset ? player.getEqualizerPreset() : "flat";
+    };
+    const setEqPreset = (preset: string) => {
+      player.setEqualizerPreset?.(preset);
+    };
+
     const addHeader = (text: string, back?: boolean) => {
       if (!back) {
         const title = el("div", "kyrspect-menu-title");
@@ -358,7 +436,20 @@ export function attachDefaultUI(player: PlayerLike, options: UIOptions = {}): Pl
       header.innerHTML = `${icons.back}<span>${text}</span>`;
       header.addEventListener("click", (event) => {
         event.stopPropagation();
-        menuView = "root";
+        if (
+          menuView === "advanced-sub-font" ||
+          menuView === "advanced-sub-color" ||
+          menuView === "advanced-sub-bg"
+        ) {
+          menuView = "advanced-subtitles";
+        } else if (
+          menuView === "advanced-subtitles" ||
+          menuView === "advanced-equalizer"
+        ) {
+          menuView = "advanced";
+        } else {
+          menuView = "root";
+        }
         renderMenu();
       });
       menu.append(header);
@@ -373,6 +464,7 @@ export function attachDefaultUI(player: PlayerLike, options: UIOptions = {}): Pl
         current?: string;
         toggle?: boolean;
         icon?: string;
+        colorDot?: string;
       } = {},
     ) => {
       const item = el("button", "kyrspect-menu-item", {
@@ -385,6 +477,11 @@ export function attachDefaultUI(player: PlayerLike, options: UIOptions = {}): Pl
         const check = el("span", "kyrspect-menu-check");
         check.innerHTML = icons.check;
         item.append(check);
+      }
+      if (options.colorDot) {
+        const dot = el("span", "kyrspect-menu-color-dot");
+        dot.style.backgroundColor = options.colorDot;
+        item.append(dot);
       }
       if (options.icon) {
         const ico = el("span", "kyrspect-menu-check");
@@ -477,6 +574,19 @@ export function attachDefaultUI(player: PlayerLike, options: UIOptions = {}): Pl
           },
         );
       }
+      if (controls.settings) {
+        addItem(
+          labels.advancedSettings,
+          () => {
+            menuView = "advanced";
+            renderMenu();
+          },
+          {
+            chevron: true,
+            icon: icons.sliders,
+          },
+        );
+      }
     } else if (menuView === "quality") {
       addHeader(labels.quality, true);
       addItem(labels.qualityAuto, () => {
@@ -518,6 +628,150 @@ export function attachDefaultUI(player: PlayerLike, options: UIOptions = {}): Pl
           player.setAudioTrack(track.id);
           closeMenu();
         }, { checked: activeAudioId === track.id });
+      }
+    } else if (menuView === "advanced") {
+      addHeader(labels.advancedSettings, true);
+      addItem(
+        labels.subtitleSettings,
+        () => {
+          menuView = "advanced-subtitles";
+          renderMenu();
+        },
+        {
+          chevron: true,
+          icon: icons.textAa,
+        },
+      );
+      addItem(
+        labels.audioDualChannel,
+        () => {
+          setDualChannel(!isDualChannel());
+          renderMenu();
+        },
+        {
+          toggle: true,
+          checked: isDualChannel(),
+          current: isDualChannel() ? labels.on : labels.off,
+        },
+      );
+      const activePresetLabel =
+        equalizerOptions.find((eq) => eq.id === getEqPreset())?.label ?? labels.eqFlat;
+      addItem(
+        labels.equalizer,
+        () => {
+          menuView = "advanced-equalizer";
+          renderMenu();
+        },
+        {
+          chevron: true,
+          current: activePresetLabel,
+          icon: icons.sliders,
+        },
+      );
+    } else if (menuView === "advanced-subtitles") {
+      addHeader(labels.subtitleSettings, true);
+      const cur = getSubStyle();
+      const currentFont =
+        subtitleFonts.find((f) => f.value === cur.fontFamily)?.label ?? labels.fontDefault;
+      const currentColor =
+        subtitleColors.find((c) => c.value.toLowerCase() === cur.color.toLowerCase())?.label ?? labels.colorWhite;
+      const currentBg =
+        subtitleBgs.find((b) => b.value.toLowerCase() === cur.backgroundColor.toLowerCase())?.label ?? labels.bgBlackSemi;
+
+      addItem(
+        labels.subtitleFont,
+        () => {
+          menuView = "advanced-sub-font";
+          renderMenu();
+        },
+        {
+          chevron: true,
+          current: currentFont,
+          icon: icons.textAa,
+        },
+      );
+      addItem(
+        labels.subtitleColor,
+        () => {
+          menuView = "advanced-sub-color";
+          renderMenu();
+        },
+        {
+          chevron: true,
+          current: currentColor,
+          colorDot: cur.color,
+          icon: icons.palette,
+        },
+      );
+      addItem(
+        labels.subtitleBgColor,
+        () => {
+          menuView = "advanced-sub-bg";
+          renderMenu();
+        },
+        {
+          chevron: true,
+          current: currentBg,
+        },
+      );
+    } else if (menuView === "advanced-sub-font") {
+      addHeader(labels.subtitleFont, true);
+      const cur = getSubStyle();
+      for (const font of subtitleFonts) {
+        addItem(
+          font.label,
+          () => {
+            setSubStyle({ fontFamily: font.value });
+            renderMenu();
+          },
+          { checked: cur.fontFamily === font.value, value: font.id },
+        );
+      }
+    } else if (menuView === "advanced-sub-color") {
+      addHeader(labels.subtitleColor, true);
+      const cur = getSubStyle();
+      for (const color of subtitleColors) {
+        addItem(
+          color.label,
+          () => {
+            setSubStyle({ color: color.value });
+            renderMenu();
+          },
+          {
+            checked: cur.color.toLowerCase() === color.value.toLowerCase(),
+            colorDot: color.value,
+            value: color.id,
+          },
+        );
+      }
+    } else if (menuView === "advanced-sub-bg") {
+      addHeader(labels.subtitleBgColor, true);
+      const cur = getSubStyle();
+      for (const bg of subtitleBgs) {
+        addItem(
+          bg.label,
+          () => {
+            setSubStyle({ backgroundColor: bg.value });
+            renderMenu();
+          },
+          {
+            checked: cur.backgroundColor.toLowerCase() === bg.value.toLowerCase(),
+            value: bg.id,
+          },
+        );
+      }
+    } else if (menuView === "advanced-equalizer") {
+      addHeader(labels.equalizer, true);
+      const activeEq = getEqPreset();
+      for (const eq of equalizerOptions) {
+        addItem(
+          eq.label,
+          () => {
+            setEqPreset(eq.id);
+            renderMenu();
+          },
+          { checked: activeEq === eq.id, value: eq.id },
+        );
       }
     }
   };

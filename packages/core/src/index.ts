@@ -7,6 +7,9 @@ export { HlsPlaybackAdapter } from "./adapters/HlsPlaybackAdapter";
 export { DashPlaybackAdapter } from "./adapters/DashPlaybackAdapter";
 export { MediaStreamPlaybackAdapter } from "./adapters/MediaStreamPlaybackAdapter";
 export { PlaybackManager } from "./playback/PlaybackManager";
+export { AudioEnhancer, EQUALIZER_PRESETS, EQUALIZER_BANDS } from "./media/AudioEnhancer";
+export type { EqualizerPresetId, EqualizerBandConfig } from "./media/AudioEnhancer";
+export type { SubtitleStyle } from "./captions/SubtitleManager";
 export { resolveSourceSync, normalizeSource, isProbablyHlsUrl, isHlsMime, isProbablyDashUrl, isDashMime } from "./utils/source";
 export {
   DrmManager,

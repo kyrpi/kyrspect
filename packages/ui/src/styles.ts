@@ -88,7 +88,8 @@ export const PLAYER_CSS = `
   text-align: center;
   pointer-events: none;
   z-index: 5;
-  font-size: 1.05rem;
+  font-size: var(--kyrspect-sub-font-size, 1.05rem);
+  font-family: var(--kyrspect-sub-font-family, inherit);
   font-weight: 500;
   letter-spacing: 0.01em;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.88);
@@ -103,15 +104,19 @@ export const PLAYER_CSS = `
 
 .kyrspect-caption-cue {
   display: inline-block;
-  padding: 0.1em 0.38em;
-  background: rgba(8, 8, 8, 0.72);
+  padding: 0.15em 0.45em;
+  background: var(--kyrspect-sub-bg-color, rgba(8, 8, 8, 0.72));
   border-radius: 6px;
-  color: #fff;
+  color: var(--kyrspect-sub-color, #fff);
+  font-family: var(--kyrspect-sub-font-family, inherit);
+  font-size: var(--kyrspect-sub-font-size, 1.05rem);
 }
 
 .kyrspect-video::cue {
-  background: rgba(8, 8, 8, 0.72);
-  color: #fff;
+  background: var(--kyrspect-sub-bg-color, rgba(8, 8, 8, 0.72));
+  color: var(--kyrspect-sub-color, #fff);
+  font-family: var(--kyrspect-sub-font-family, inherit);
+  font-size: var(--kyrspect-sub-font-size, 1.05rem);
 }
 
 .kyrspect-overlay {
@@ -728,6 +733,16 @@ export const PLAYER_CSS = `
 
 .kyrspect-menu-item[aria-checked="true"] .kyrspect-menu-toggle-thumb {
   transform: translateX(14px);
+}
+
+.kyrspect-menu-color-dot {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  display: inline-block;
+  flex: none;
+  margin-right: 4px;
 }
 
 .kyrspect-context {

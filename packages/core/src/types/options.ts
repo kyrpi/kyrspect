@@ -3,7 +3,19 @@ import type { KyrspectTextTrackInput } from "./tracks";
 import type { NetworkRequest } from "./adapter";
 import type { StatsOptions } from "./stats";
 import type { DrmOptions } from "./drm";
+import type { SubtitleStyle } from "../captions/SubtitleManager";
+import type { EqualizerPresetId } from "../media/AudioEnhancer";
 import type { UIAspectRatio, UIControlsConfig, UIFit, UILabels, UILayout, UITheme } from "@kyrspect/ui";
+
+export interface AdvancedAudioOptions {
+  dualChannel?: boolean;
+  equalizer?: EqualizerPresetId;
+}
+
+export interface AdvancedOptions {
+  subtitles?: SubtitleStyle;
+  audio?: AdvancedAudioOptions;
+}
 
 export interface CaptionOptions {
   enabled?: boolean;
@@ -90,6 +102,7 @@ export interface KyrspectOptions {
   network?: NetworkOptions;
   retry?: RetryOptions;
   preferences?: PreferenceOptions;
+  advanced?: AdvancedOptions;
   playsInline?: boolean;
   crossOrigin?: "anonymous" | "use-credentials" | "";
   debug?: boolean;

@@ -27,9 +27,12 @@ export interface KyrspectEventMap {
   qualitylevelsloaded: { qualities: KyrspectQuality[] };
   bandwidthchange: { bitrate: number };
   subtitlechange: { track: KyrspectSubtitleTrack | null };
+  subtitlestylechange: { style: Record<string, string | undefined> };
   subtitleloaded: { track: KyrspectSubtitleTrack };
   subtitleerror: { error: KyrspectError };
   audiotrackchange: { track: KyrspectAudioTrack | null };
+  equalizerchange: { preset: string };
+  dualchannelchange: { enabled: boolean };
   fullscreenchange: { fullscreen: boolean };
   pictureinpicturechange: { active: boolean };
   liveedge: { atLiveEdge: boolean };

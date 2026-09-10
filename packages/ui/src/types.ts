@@ -127,6 +127,37 @@ export interface UILabels {
   audioVisualizer: string;
   on: string;
   off: string;
+  advancedSettings: string;
+  subtitleSettings: string;
+  subtitleFont: string;
+  subtitleColor: string;
+  subtitleBgColor: string;
+  audioDualChannel: string;
+  equalizer: string;
+  eqFlat: string;
+  eqBassBoost: string;
+  eqBassReducer: string;
+  eqTrebleBoost: string;
+  eqVocal: string;
+  eqRock: string;
+  eqPop: string;
+  eqClassical: string;
+  eqElectronic: string;
+  fontDefault: string;
+  fontSans: string;
+  fontSerif: string;
+  fontMono: string;
+  fontCursive: string;
+  colorWhite: string;
+  colorYellow: string;
+  colorGreen: string;
+  colorCyan: string;
+  colorRed: string;
+  bgBlackSemi: string;
+  bgBlackSolid: string;
+  bgTransparent: string;
+  bgDarkBlue: string;
+  bgDarkGray: string;
 }
 
 export type StatsFieldId =
@@ -192,6 +223,12 @@ export interface PlayerLike {
   getSubtitleTracks(): UISubtitleTrack[];
   setSubtitleTrack(id: string): void;
   disableSubtitles(): void;
+  setSubtitleStyle?(style: Record<string, string | undefined>): void;
+  getSubtitleStyle?(): Record<string, string | undefined>;
+  setDualChannelAudio?(enabled: boolean): void;
+  isDualChannelAudioEnabled?(): boolean;
+  setEqualizerPreset?(preset: string): void;
+  getEqualizerPreset?(): string;
   getAudioTracks(): UIAudioTrack[];
   setAudioTrack(id: string): void;
   enterFullscreen(): Promise<void>;

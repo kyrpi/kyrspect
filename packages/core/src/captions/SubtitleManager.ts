@@ -4,11 +4,25 @@ import type { KyrspectEventMap } from "../types/events";
 import type { PlaybackAdapter } from "../types/adapter";
 import { KyrspectError } from "../errors/KyrspectError";
 
+export interface SubtitleStyle {
+  fontFamily?: string;
+  color?: string;
+  backgroundColor?: string;
+  fontSize?: string;
+  [key: string]: string | undefined;
+}
+
 export class SubtitleManager {
   private readonly elements: HTMLTrackElement[] = [];
   private customRoot: HTMLElement | null = null;
   private onCueChange: (() => void) | null = null;
   private activeId: string | null = null;
+  private style: Required<SubtitleStyle> = {
+    fontFamily: "inherit",
+    color: "#ffffff",
+    backgroundColor: "rgba(8, 8, 8, 0.75)",
+    fontSize: "1.05rem",
+  };
 
   constructor(
     private readonly video: HTMLVideoElement,
@@ -101,8 +115,29 @@ export class SubtitleManager {
     this.set(null);
   }
 
+  setStyle(patch: Partial<SubtitleStyle>): void {
+    this.style = { ...this.style, ...patch };
+    this.applyStyle();
+    this.events.emit("subtitlestylechange", { style: this.getStyle() });
+  }
+
+  getStyle(): SubtitleStyle {
+    return { ...this.style };
+  }
+
+  private applyStyle(): void {
+    const target = this.customRoot ?? this.video.parentElement ?? this.video;
+    if (target && typeof target.style !== "undefined") {
+      if (this.style.fontFamily) target.style.setProperty("--kyrspect-sub-font-family", this.style.fontFamily);
+      if (this.style.color) target.style.setProperty("--kyrspect-sub-color", this.style.color);
+      if (this.style.backgroundColor) target.style.setProperty("--kyrspect-sub-bg-color", this.style.backgroundColor);
+      if (this.style.fontSize) target.style.setProperty("--kyrspect-sub-font-size", this.style.fontSize);
+    }
+  }
+
   attachCustomRoot(root: HTMLElement | null): void {
     this.customRoot = root;
+    this.applyStyle();
     this.bindCustomRenderer(this.activeId);
   }
 
