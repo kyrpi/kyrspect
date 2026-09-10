@@ -24,6 +24,7 @@
     "test:watch": "vitest",
     "verify:ui": "node scripts/verify.mjs",
     "diagnose:ui": "node scripts/diagnose.mjs",
+    "dev": "npm run dev -w @kyrspect/example-demo",
     "dev:demo": "npm run dev -w @kyrspect/example-demo",
     "dev:vanilla": "npm run dev -w @kyrspect/example-vanilla",
     "dev:react": "npm run dev -w @kyrspect/example-react",

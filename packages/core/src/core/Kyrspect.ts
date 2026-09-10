@@ -176,6 +176,7 @@ export class Kyrspect {
         aspectRatio: this.optionsInternal.ui?.aspectRatio,
         fit: this.optionsInternal.ui?.fit,
         fill: this.optionsInternal.ui?.fill,
+        audioVisualizer: this.optionsInternal.ui?.audioVisualizer,
       });
       const captionRoot = this.el.querySelector(".kyrspect-captions");
       this.subtitles.attachCustomRoot(
@@ -214,6 +215,16 @@ export class Kyrspect {
     if (!this.optionsInternal.ui) this.optionsInternal.ui = { aspectRatio };
     else this.optionsInternal.ui.aspectRatio = aspectRatio;
     this.ui?.setAspectRatio(aspectRatio);
+  }
+
+  setAudioVisualizer(visible: boolean): void {
+    if (!this.optionsInternal.ui) this.optionsInternal.ui = { audioVisualizer: visible };
+    else this.optionsInternal.ui.audioVisualizer = visible;
+    this.ui?.setAudioVisualizer(visible);
+  }
+
+  isAudioVisualizerVisible(): boolean {
+    return this.ui?.isAudioVisualizerVisible() ?? false;
   }
 
   get layout(): UILayout {

@@ -49,4 +49,7 @@ export const tr: UILabels = {
   statsFlags: "Oynatma",
   statsDate: "Tarih",
   statsClose: "Kapat",
+  audioVisualizer: "Sesi Göster",
+  on: "Açık",
+  off: "Kapalı",
 };

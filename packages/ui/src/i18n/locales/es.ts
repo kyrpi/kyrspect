@@ -49,4 +49,7 @@ export const es: UILabels = {
   statsFlags: "Reproducción",
   statsDate: "Fecha",
   statsClose: "Cerrar",
+  audioVisualizer: "Mostrar audio",
+  on: "Activado",
+  off: "Desactivado",
 };

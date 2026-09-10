@@ -14,6 +14,7 @@ export type {
   StatsCustomField,
 } from "./types";
 export { attachDefaultUI } from "./PlayerUI";
+export { createAudioWaveform, type AudioWaveformHandle, type WaveformOptions } from "./waveform";
 export { injectStyles, PLAYER_CSS } from "./styles";
 export { applyTheme } from "./theme";
 export { formatClock, formatLiveOffset } from "./format";

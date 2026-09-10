@@ -61,6 +61,7 @@ export interface UIPlayerOptions {
   aspectRatio?: UIAspectRatio;
   fit?: UIFit;
   fill?: boolean;
+  audioVisualizer?: boolean;
 }
 
 export type KeyboardConfig = boolean | Partial<Record<string, string>>;
@@ -175,5 +176,6 @@ export const DEFAULT_OPTIONS: Required<
   ui: {
     hideDelay: 3000,
     showOnPause: true,
+    audioVisualizer: false,
   },
 };

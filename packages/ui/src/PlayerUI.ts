@@ -5,6 +5,7 @@ import { resolveFrameSize, shouldFillHost } from "./layout";
 import { createSparkHistory, renderStatsRows } from "./statsPanel";
 import { injectStyles } from "./styles";
 import { applyTheme } from "./theme";
+import { createAudioWaveform, type AudioWaveformHandle } from "./waveform";
 import type {
   PlayerLike,
   PlayerUIHandle,
@@ -29,6 +30,7 @@ const DEFAULT_CONTROLS: Required<UIControlsConfig> = {
   playbackRate: true,
   quality: true,
   live: true,
+  audioVisualizer: true,
 };
 
 function resolveControls(input: UIOptions["controls"]): Required<UIControlsConfig> {
@@ -44,6 +46,7 @@ function resolveControls(input: UIOptions["controls"]): Required<UIControlsConfi
       playbackRate: false,
       quality: false,
       live: false,
+      audioVisualizer: false,
     };
   }
   if (input === true || input === undefined) return { ...DEFAULT_CONTROLS };
@@ -128,6 +131,12 @@ export function attachDefaultUI(player: PlayerLike, options: UIOptions = {}): Pl
   errorBox.append(errorTitle, retry);
 
   const controlBar = el("div", "kyrspect-controls");
+  let audioVisualizerEnabled = Boolean(options.audioVisualizer ?? false);
+  const waveformEl = el("div", "kyrspect-waveform");
+  const waveform: AudioWaveformHandle = createAudioWaveform(waveformEl, player, {
+    visible: audioVisualizerEnabled,
+  });
+
   const timeline = el("div", "kyrspect-timeline", {
     role: "slider",
     tabindex: "0",
@@ -192,6 +201,7 @@ export function attachDefaultUI(player: PlayerLike, options: UIOptions = {}): Pl
   if (controls.pip) right.append(pipBtn);
   if (controls.fullscreen) right.append(fsBtn);
 
+  if (controls.audioVisualizer) controlBar.append(waveformEl);
   if (controls.timeline) controlBar.append(timeline);
   bar.append(left, right);
   controlBar.append(bar);
@@ -303,6 +313,7 @@ export function attachDefaultUI(player: PlayerLike, options: UIOptions = {}): Pl
     played.style.width = playedPct;
     knob.style.left = playedPct;
     buffered.style.width = `${Math.max(0, Math.min(1, bufferedRatio)) * 100}%`;
+    waveform.update(playedRatio, bufferedRatio);
   };
 
   const updateFsPip = () => {
@@ -355,18 +366,31 @@ export function attachDefaultUI(player: PlayerLike, options: UIOptions = {}): Pl
     const addItem = (
       label: string,
       onClick: () => void,
-      options: { checked?: boolean; value?: string; chevron?: boolean; current?: string } = {},
+      options: {
+        checked?: boolean;
+        value?: string;
+        chevron?: boolean;
+        current?: string;
+        toggle?: boolean;
+        icon?: string;
+      } = {},
     ) => {
       const item = el("button", "kyrspect-menu-item", {
         type: "button",
-        role: options.chevron ? "menuitem" : "menuitemradio",
+        role: options.toggle ? "menuitemcheckbox" : options.chevron ? "menuitem" : "menuitemradio",
         "aria-checked": String(Boolean(options.checked)),
       });
       if (options.value) item.dataset.value = options.value;
-      if (!options.chevron) {
+      if (!options.chevron && !options.toggle) {
         const check = el("span", "kyrspect-menu-check");
         check.innerHTML = icons.check;
         item.append(check);
+      }
+      if (options.icon) {
+        const ico = el("span", "kyrspect-menu-check");
+        ico.style.opacity = "1";
+        ico.innerHTML = options.icon;
+        item.append(ico);
       }
       const text = el("span", "kyrspect-menu-label");
       text.textContent = label;
@@ -375,6 +399,13 @@ export function attachDefaultUI(player: PlayerLike, options: UIOptions = {}): Pl
         const current = el("span", "kyrspect-menu-value");
         current.textContent = options.current;
         item.append(current);
+      }
+      if (options.toggle) {
+        const toggle = el("span", "kyrspect-menu-toggle");
+        toggle.setAttribute("aria-hidden", "true");
+        const thumb = el("span", "kyrspect-menu-toggle-thumb");
+        toggle.append(thumb);
+        item.append(toggle);
       }
       if (options.chevron) {
         const chevron = el("span", "kyrspect-menu-chevron");
@@ -429,6 +460,22 @@ export function attachDefaultUI(player: PlayerLike, options: UIOptions = {}): Pl
           chevron: true,
           current: active ? (active.label || active.language) : "",
         });
+      }
+      if (controls.audioVisualizer) {
+        addItem(
+          labels.audioVisualizer,
+          () => {
+            audioVisualizerEnabled = !audioVisualizerEnabled;
+            waveform.setVisible(audioVisualizerEnabled);
+            renderMenu();
+          },
+          {
+            toggle: true,
+            checked: audioVisualizerEnabled,
+            current: audioVisualizerEnabled ? labels.on : labels.off,
+            icon: icons.waveform,
+          },
+        );
       }
     } else if (menuView === "quality") {
       addHeader(labels.quality, true);
@@ -1026,6 +1073,14 @@ export function attachDefaultUI(player: PlayerLike, options: UIOptions = {}): Pl
       aspectRatio = next ?? "auto";
       applyFrame();
     },
+    setAudioVisualizer(visible: boolean) {
+      audioVisualizerEnabled = visible;
+      waveform.setVisible(visible);
+      if (menuOpen && menuView === "root") renderMenu();
+    },
+    isAudioVisualizerVisible() {
+      return audioVisualizerEnabled;
+    },
     destroy() {
       window.clearTimeout(hideTimer);
       window.clearTimeout(clickTimer);
@@ -1033,6 +1088,8 @@ export function attachDefaultUI(player: PlayerLike, options: UIOptions = {}): Pl
       if (raf) window.cancelAnimationFrame(raf);
       frameObserver?.disconnect();
       for (const off of unsubs) off();
+      waveform.destroy();
+      waveformEl.remove();
       document.removeEventListener("click", onDocClick);
       document.removeEventListener("keydown", onDocKey);
       root.removeEventListener("click", onSurfaceClick);

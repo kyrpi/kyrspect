@@ -39,6 +39,7 @@ export interface UIControlsConfig {
   playbackRate?: boolean;
   quality?: boolean;
   live?: boolean;
+  audioVisualizer?: boolean;
 }
 
 export interface UITheme {
@@ -71,6 +72,7 @@ export interface UIOptions {
   aspectRatio?: UIAspectRatio;
   fit?: UIFit;
   fill?: boolean;
+  audioVisualizer?: boolean;
 }
 
 export interface UILabels {
@@ -122,6 +124,9 @@ export interface UILabels {
   statsFlags: string;
   statsDate: string;
   statsClose: string;
+  audioVisualizer: string;
+  on: string;
+  off: string;
 }
 
 export type StatsFieldId =
@@ -235,4 +240,6 @@ export interface PlayerUIHandle {
   setStatsFields(fields: StatsField[]): void;
   setLayout(layout: UILayout): void;
   setAspectRatio(aspectRatio?: UIAspectRatio): void;
+  setAudioVisualizer(visible: boolean): void;
+  isAudioVisualizerVisible(): boolean;
 }
