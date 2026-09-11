@@ -15,6 +15,7 @@ Lütfen tercih ettiğiniz dili seçin / Please select your preferred language:
 - [API Reference & Events](./en/api-reference.md)
 - [Architecture & WebAssembly Engine](./en/architecture.md)
 - [Alternatives Comparison & Benchmarks](./en/alternatives-and-benchmarks.md)
+- [Roadmap & Open TODOs](../TODO.md) (DASH Hardening & Package Optimization)
 
 ---
 
@@ -27,3 +28,4 @@ Lütfen tercih ettiğiniz dili seçin / Please select your preferred language:
 - [API Referansı & Olaylar](./tr/api-referansi.md)
 - [Mimari ve WebAssembly Çekirdeği](./tr/mimari.md)
 - [Alternatifler Kıyaslaması ve Benchmark Raporu](./tr/alternatifler-ve-benchmark.md)
+- [Yol Haritası & Açık TODO'lar](../TODO.md) (DASH Güçlendirmesi ve Paket Optimizasyonu)

@@ -1,12 +1,46 @@
 # Framework Integration Guide
 
-`@kyrspect/wasm` is framework-agnostic. Below are complete code examples for integrating Kyrspect into popular modern frameworks.
+`@kyrspect/core` and `@kyrspect/wasm` are framework-agnostic. Below are complete code examples for integrating Kyrspect into React, Next.js, Vue 3, Svelte, Angular, and Vanilla JavaScript.
 
 ---
 
 ## 1. React / Next.js
 
-### React Component
+### Official `@kyrspect/react` Component (Recommended)
+
+Kyrspect ships with an official, typed, and lightweight React package (`@kyrspect/react` ~1.7 KB gzip):
+
+```bash
+npm install @kyrspect/react @kyrspect/core
+```
+
+```tsx
+import React, { useRef } from "react";
+import { KyrspectPlayer, type KyrspectHandle } from "@kyrspect/react";
+
+export const VideoPage: React.FC = () => {
+  const playerRef = useRef<KyrspectHandle>(null);
+
+  return (
+    <div style={{ width: "100%", maxWidth: "960px", aspectRatio: "16 / 9" }}>
+      <KyrspectPlayer
+        ref={playerRef}
+        src="https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
+        autoplay={false}
+        controls
+        theme="dracula" // 'cyberpunk' | 'nord' | 'dracula' | 'sunset' | 'emerald' | 'oled' | 'minimal' | 'default'
+        performanceMode={false}
+        onReady={() => console.log("Player is ready")}
+        onPlay={() => console.log("Playback started")}
+      />
+    </div>
+  );
+};
+```
+
+### Custom Hook / Manual Binding
+
+If you prefer building a custom component with `@kyrspect/wasm` or `@kyrspect/core`:
 
 ```tsx
 import React, { useEffect, useRef } from "react";
@@ -18,31 +52,24 @@ interface VideoPlayerProps {
   autoplay?: boolean;
 }
 
-export const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, poster, autoplay = false }) => {
+export const CustomVideoPlayer: React.FC<VideoPlayerProps> = ({ src, poster, autoplay = false }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<KyrspectWasm | null>(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
 
-    // Automatically uses Wasm engine
     const player = createPlayer(containerRef.current, {
       src,
       autoplay,
       controls: true,
       ui: {
-        theme: {
-          accent: "#6366f1",
-          background: "#0a0c10",
-        },
+        theme: "dracula",
+        performanceMode: false,
       },
     });
 
     playerRef.current = player;
-
-    player.on("ready", () => {
-      console.log("Player ready");
-    });
 
     return () => {
       player.destroy();
@@ -55,14 +82,14 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, poster, autoplay 
 ```
 
 ### Next.js (App Router / Pages Router)
-Because WebAssembly and HTMLMediaElement run client-side, dynamic import with `ssr: false` or `'use client'` is recommended:
+Because WebAssembly, HTMLMediaElement, and DOM manipulations run client-side, dynamic import with `ssr: false` or `'use client'` is recommended:
 
 ```tsx
 'use client';
 import dynamic from 'next/dynamic';
 
 export const DynamicPlayer = dynamic(
-  () => import('./VideoPlayer').then((mod) => mod.VideoPlayer),
+  () => import('./VideoPage').then((mod) => mod.VideoPage),
   { ssr: false }
 );
 ```
@@ -94,6 +121,9 @@ onMounted(() => {
       src: props.src,
       autoplay: props.autoplay,
       controls: true,
+      ui: {
+        theme: "nord",
+      },
     });
   }
 });
@@ -138,6 +168,9 @@ onUnmounted(() => {
     player = createPlayer(container, {
       src,
       controls: true,
+      ui: {
+        theme: "cyberpunk",
+      },
     });
   });
 
@@ -179,6 +212,9 @@ export class KyrspectPlayerComponent implements OnInit, OnDestroy {
     this.player = createPlayer(this.container.nativeElement, {
       src: this.src,
       controls: true,
+      ui: {
+        theme: "emerald",
+      },
     });
   }
 
@@ -200,9 +236,9 @@ const player = createPlayer("#player", {
   controls: true,
   ui: {
     language: "en",
-    theme: {
-      accent: "#06b6d4",
-    },
+    theme: "sunset",
+    performanceMode: false,
+    audioVisualizer: true,
   },
 });
 

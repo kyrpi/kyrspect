@@ -97,3 +97,6 @@ Bu testleri yerel ortamınızda dilediğiniz an tekrarlamak için:
 ```bash
 npm run benchmark
 ```
+
+Gelecek performans ve paket optimizasyonu hedefleri (paket boyutunu 50 KB gzip altına çekme, dinamik panel yükleme ve DASH güçlendirmesi) [TODO.md](../TODO.md) içinde takip edilmektedir.
+

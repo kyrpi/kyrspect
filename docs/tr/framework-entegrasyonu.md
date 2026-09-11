@@ -1,12 +1,46 @@
 # Farklı Kütüphane ve Framework'lerde Kullanım
 
-`@kyrspect/wasm` framework'ten bağımsızdır. Aşağıda React, Next.js, Vue 3, Svelte, Angular ve Vanilla JavaScript projelerinde kullanım örnekleri yer almaktadır.
+`@kyrspect/core` ve `@kyrspect/wasm` framework'ten bağımsızdır. Aşağıda React, Next.js, Vue 3, Svelte, Angular ve Vanilla JavaScript projelerinde kullanım örnekleri yer almaktadır.
 
 ---
 
 ## 1. React & Next.js
 
-### React Bileşeni
+### Resmi `@kyrspect/react` Bileşeni (Tavsiye Edilen)
+
+Kyrspect, React projeleri için tip güvenli, reaktif ve yalnızca 1.7 KB (gzip) boyutunda resmi bir sarmalayıcı sunar:
+
+```bash
+npm install @kyrspect/react @kyrspect/core
+```
+
+```tsx
+import React, { useRef } from "react";
+import { KyrspectPlayer, type KyrspectHandle } from "@kyrspect/react";
+
+export const VideoSayfasi: React.FC = () => {
+  const playerRef = useRef<KyrspectHandle>(null);
+
+  return (
+    <div style={{ width: "100%", maxWidth: "960px", aspectRatio: "16 / 9" }}>
+      <KyrspectPlayer
+        ref={playerRef}
+        src="https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
+        autoplay={false}
+        controls
+        theme="dracula" // 'cyberpunk' | 'nord' | 'dracula' | 'sunset' | 'emerald' | 'oled' | 'minimal' | 'default'
+        performanceMode={false}
+        onReady={() => console.log("Oynatıcı hazır")}
+        onPlay={() => console.log("Oynatma başladı")}
+      />
+    </div>
+  );
+};
+```
+
+### Özel Hook / Doğrudan DOM Sarmalama
+
+`@kyrspect/wasm` veya `@kyrspect/core` sınıfını doğrudan React içinde kendiniz kontrol etmek isterseniz:
 
 ```tsx
 import React, { useEffect, useRef } from "react";
@@ -17,24 +51,21 @@ interface VideoPlayerProps {
   autoplay?: boolean;
 }
 
-export const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, autoplay = false }) => {
+export const OzelVideoPlayer: React.FC<VideoPlayerProps> = ({ src, autoplay = false }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<KyrspectWasm | null>(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
 
-    // Destekleyen tarayıcılarda otomatik olarak Wasm motoru başlatılır
     const player = createPlayer(containerRef.current, {
       src,
       autoplay,
       controls: true,
       ui: {
         language: "tr",
-        theme: {
-          accent: "#6366f1",
-          background: "#0a0c10",
-        },
+        theme: "dracula",
+        performanceMode: false,
       },
     });
 
@@ -58,7 +89,7 @@ WebAssembly ve HTML video bileşenleri istemci tarafında çalıştığı için 
 import dynamic from 'next/dynamic';
 
 export const DynamicVideoPlayer = dynamic(
-  () => import('./VideoPlayer').then((mod) => mod.VideoPlayer),
+  () => import('./VideoSayfasi').then((mod) => mod.VideoSayfasi),
   { ssr: false }
 );
 ```
@@ -90,6 +121,10 @@ onMounted(() => {
       src: props.src,
       autoplay: props.autoplay,
       controls: true,
+      ui: {
+        language: "tr",
+        theme: "nord",
+      },
     });
   }
 });
@@ -134,6 +169,10 @@ onUnmounted(() => {
     player = createPlayer(container, {
       src,
       controls: true,
+      ui: {
+        language: "tr",
+        theme: "cyberpunk",
+      },
     });
   });
 
@@ -175,6 +214,10 @@ export class KyrspectPlayerComponent implements OnInit, OnDestroy {
     this.player = createPlayer(this.container.nativeElement, {
       src: this.src,
       controls: true,
+      ui: {
+        language: "tr",
+        theme: "emerald",
+      },
     });
   }
 
@@ -196,9 +239,9 @@ const player = createPlayer("#player", {
   controls: true,
   ui: {
     language: "tr",
-    theme: {
-      accent: "#10b981",
-    },
+    theme: "sunset",
+    performanceMode: false,
+    audioVisualizer: true,
   },
 });
 

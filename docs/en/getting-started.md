@@ -2,7 +2,9 @@
 
 Kyrspect is a modern, framework-agnostic video playback engine for the web. It is available in two compatible variants:
 - **`@kyrspect/wasm`**: High-performance WebAssembly engine (Rust-powered state machine, EWMA adaptive bitrate, live drift sync, and subtitle parser).
-- **`@kyrspect/core`**: Lightweight TypeScript engine.
+- **`@kyrspect/core`**: Lightweight TypeScript engine (~25 KB gzip).
+
+Both share the same modern UI layer (`@kyrspect/ui`) featuring 8 built-in themes, performance mode, Web Audio visualizers, 5-band equalizers, and real-time telemetry.
 
 ---
 
@@ -14,10 +16,16 @@ Install the WebAssembly package along with the UI components:
 npm install @kyrspect/wasm @kyrspect/ui
 ```
 
-Or using Yarn / pnpm / Bun:
+Or install the pure TypeScript core:
 
 ```bash
-pnpm add @kyrspect/wasm @kyrspect/ui
+npm install @kyrspect/core @kyrspect/ui
+```
+
+If you are using React, install the official wrapper:
+
+```bash
+npm install @kyrspect/react @kyrspect/core
 ```
 
 ---
@@ -37,10 +45,12 @@ const player = createPlayer("#player-container", {
   controls: true,
   ui: {
     language: "en",
-    theme: {
-      accent: "#6366f1",
-      background: "#0a0c10",
-    },
+    // 8 built-in themes: 'dracula' | 'cyberpunk' | 'nord' | 'sunset' | 'emerald' | 'oled' | 'minimal' | 'default'
+    theme: "dracula",
+    // Toggle performance mode for resource-constrained devices:
+    performanceMode: false,
+    // Real-time audio waveform overlay:
+    audioVisualizer: false,
   },
 });
 
@@ -78,3 +88,10 @@ Add a container element in your HTML:
 ```html
 <div id="player-container" style="width: 100%; max-width: 960px; aspect-ratio: 16/9;"></div>
 ```
+
+---
+
+## Benchmarks & Roadmap
+
+- Run the automated 500-iteration benchmark suite: `npm run benchmark`. Full report in [Alternatives & Benchmarks](./alternatives-and-benchmarks.md).
+- Active development roadmap and open tasks (DASH hardening and package optimization) are tracked in [TODO.md](../../TODO.md).

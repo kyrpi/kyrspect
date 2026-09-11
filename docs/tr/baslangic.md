@@ -2,7 +2,9 @@
 
 Kyrspect, modern web uygulamaları için geliştirilmiş yüksek performanslı ve framework bağımsız bir video oynatıcı motorudur. İki uyumlu paket seçeneği sunar:
 - **`@kyrspect/wasm`**: Rust ile yazılmış ve WebAssembly'ye derlenmiş yüksek performanslı çekirdek motor (EWMA ABR, düşük gecikmeli canlı yayın senkronizasyonu, WebVTT altyazı motoru ve telemetri).
-- **`@kyrspect/core`**: Hafif TypeScript çekirdeği.
+- **`@kyrspect/core`**: Hafif TypeScript çekirdeği (~25 KB gzip).
+
+Her iki motor da 8 dahili estetik tema, performans modu, Web Audio görselleştiricisi, 5-bant ekolayzer ve canlı telemetri sunan ortak `@kyrspect/ui` arayüzünü paylaşır.
 
 ---
 
@@ -14,10 +16,16 @@ WebAssembly paketini ve arayüz bileşenlerini projenize ekleyin:
 npm install @kyrspect/wasm @kyrspect/ui
 ```
 
-Veya Yarn / pnpm / Bun ile:
+Veya yalnızca TypeScript çekirdeğini kullanmak isterseniz:
 
 ```bash
-pnpm add @kyrspect/wasm @kyrspect/ui
+npm install @kyrspect/core @kyrspect/ui
+```
+
+React kullanıyorsanız, resmi sarmalayıcıyı ekleyin:
+
+```bash
+npm install @kyrspect/react @kyrspect/core
 ```
 
 ---
@@ -37,10 +45,12 @@ const player = createPlayer("#player-container", {
   controls: true,
   ui: {
     language: "tr",
-    theme: {
-      accent: "#6366f1",
-      background: "#0a0c10",
-    },
+    // 8 dahili tema: 'dracula' | 'cyberpunk' | 'nord' | 'sunset' | 'emerald' | 'oled' | 'minimal' | 'default'
+    theme: "dracula",
+    // Düşük donanımlı cihazlar veya pil tasarrufu için performans modu:
+    performanceMode: false,
+    // Canlı ses frekans dalga formu görselleştiricisi:
+    audioVisualizer: false,
   },
 });
 
@@ -78,3 +88,10 @@ HTML dosyanıza bir kapsayıcı (container) elemanı eklemeniz yeterlidir:
 ```html
 <div id="player-container" style="width: 100%; max-width: 960px; aspect-ratio: 16/9;"></div>
 ```
+
+---
+
+## Benchmark ve Yol Haritası
+
+- 500 döngülük otomatik benchmark testini yerel ortamınızda çalıştırın: `npm run benchmark`. Ayrıntılı rapor için [Alternatifler ve Benchmark Raporu](./alternatifler-ve-benchmark.md) sayfasına bakın.
+- Açık işler ve gelecek planlar (DASH güçlendirmesi ve paket optimizasyonu) [TODO.md](../../TODO.md) içinde listelenmektedir.

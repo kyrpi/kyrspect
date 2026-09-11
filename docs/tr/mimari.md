@@ -1,65 +1,83 @@
-# Mimari ve WebAssembly Çekirdeği
+# Mimari ve Sistem Tasarımı
 
-Kyrspect WebAssembly mimarisi; düşük bellek tüketimi, yüksek işlem hacmi ve kritik oynatma döngülerinde milisaniye altı yürütme performansı sunmak üzere tasarlanmıştır.
+Kyrspect; varsayılan oynatma döngüsünde sıfır harici bağımlılık barındıran hafif bir mikro-çekirdek (`@kyrspect/core`), isteğe bağlı WebAssembly hızlandırma motoru (`@kyrspect/wasm`), modüler bir Web Audio ses grafiği ve yüksek performanslı modern bir kullanıcı arayüzü (`@kyrspect/ui`) etrafında tasarlanmıştır.
 
 ---
 
-## Mimari Şema
+## Genel Mimari Şema
 
 ```text
-┌─────────────────────────────────────────────────────────────┐
-│                    Kyrspect UI Layer                        │
-│         (Kontroller, Menüler, Stats Paneli, Temalar, i18n)  │
-└──────────────────────────────┬──────────────────────────────┘
-                               │
-┌──────────────────────────────▼──────────────────────────────┐
-│             KyrspectWasm JavaScript / TS Bridge             │
-│       (HTMLVideoElement, Event Emitter, HLS / DASH Adaptörü)│
-└──────────────────────────────┬──────────────────────────────┘
-                               │ (Sıfır ek yük C-ABI FFI Köprüsü)
-┌──────────────────────────────▼──────────────────────────────┐
-│                 WebAssembly Core Engine (Rust)              │
-│  ├── State Machine (Durum Motoru)                           │
-│  ├── EWMA Adaptive Bitrate (ABR) Bant Genişliği Kestirimi   │
-│  ├── Düşük Gecikmeli Canlı Yayın & Drift Senkronizasyonu    │
-│  ├── Gerçek Zamanlı Telemetri & Kare Düşüşü Hesaplayıcı     │
-│  ├── WebVTT Altyazı Ayrıştırıcı & İkili Arama Zaman Çizelgesi│
-│  └── Medya URL & MIME Analizörü                             │
-└─────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────┐
+│                        Kyrspect UI Katmanı                             │
+│  ├── Kontroller, Menüler, Zaman Çizelgesi & Hassas Hız Slider (0.05)   │
+│  ├── 8 Dahili Estetik Tema (Dracula, Nord, Cyberpunk, Sunset vb.)      │
+│  ├── Performans Modu Motoru (Sıfır blur, düşük donanım tasarrufu)      │
+│  ├── Canlı Stats for Nerds Paneli (Sparkline grafikler, FPS, Bitrate)  │
+│  └── Ses Görselleştirici (Waveform canvas) & Ekolayzer Kontrolleri     │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │
+┌───────────────────────────────────▼────────────────────────────────────┐
+│                  Kyrspect Çekirdeği (@kyrspect/core)                   │
+│  ├── Durum Makinesi & Tip Güvenli EventEmitter Olay Döngüsü            │
+│  ├── Gelişmiş Ses Alt Sistemi (Web Audio API Grafiği)                  │
+│  │   ├── 5-Bant BiquadFilter Parametrik Ekolayzer                      │
+│  │   ├── Çift Kanallı Stereo / Mono Ses Dağıtıcısı                     │
+│  │   └── Hızlı Fourier Dönüşümü (FFT) Frekans Analizörü                │
+│  ├── Kaynak Çözümleme & MIME Tespiti                                   │
+│  ├── Yetenek Önbelleği & Engellemeyen CDM Taraması                     │
+│  └── İsteğe Bağlı DRM Yöneticisi (Widevine, PlayReady, FairPlay)       │
+└───────────────────┬────────────────────────────────┬───────────────────┘
+                    │                                │
+┌───────────────────▼──────────────┐   ┌─────────────▼───────────────────┐
+│       Oynatma Adaptörleri        │   │  WebAssembly Motoru (Rust FFI)  │
+│  ├── HlsPlaybackAdapter          │   │  ├── EWMA Bant Genişliği Tahmini│
+│  │   (Yerel HLS veya hls.js MSE) │   │  ├── Canlı Drift Senkronizasyonu│
+│  ├── DashPlaybackAdapter         │   │  ├── Canlı Telemetri İstatistiği│
+│  │   (dash.js MSE Motoru)        │   │  └── WebVTT İkili Arama Motoru  │
+│  └── Progressive / MediaStream   │   └─────────────────────────────────┘
+└──────────────────────────────────┘
 ```
 
 ---
 
-## Rust Çekirdek Modülleri (`wasm32-unknown-unknown`)
+## Temel Alt Sistemler
 
-1. **State Motoru (`src/state.rs`)**:
-   - Oynatıcı durum geçişlerini (`idle`, `loading`, `ready`, `playing`, `paused`, `buffering`, `seeking`, `ended`, `error`) atomik olarak yönetir.
-   - Asenkron oynatma olayları arasında tutarlı durum bütünlüğü sağlar.
+### 1. Headless Çekirdek (`@kyrspect/core`)
+- **Framework Bağımsızlığı:** React, Vue veya doğrudan DOM UI bağımlılıkları olmadan bağımsız çalışabilir. İster headless (UI'sız) ister özel UI tasarımlarıyla entegre edilebilir.
+- **Olay Döngüsü:** Bellek sızıntısı üretmeyen tip güvenli olay dinleme altyapısı.
+- **Tembel Yükleme (Lazy Loading):** hls.js ve dash.js kütüphaneleri yalnızca HLS veya DASH akışı oynatılacağı zaman dinamik olarak yüklenir. Düz MP4/WebM videoları sıfır kütüphane ek yüküyle oynatılır.
+- **İsteğe Bağlı DRM:** Lisans URL'si yapılandırılmadığı sürece DRM yöneticisi (`DrmManager`) oluşturulmaz ve EME kancaları devreye girmez.
 
-2. **Adaptive Bitrate (ABR) Motoru (`src/abr.rs`)**:
-   - Çift EWMA (Hızlı $\alpha=0.3$, Yavaş $\alpha=0.05$) bant genişliği kestirimi.
-   - İlk bağlantı dalgalanmalarında agresif yukarı geçişleri engeller.
-   - Tampon 1.5 saniyenin altına düştüğünde anında en düşük basamağa (emergency downswitch) iner.
-   - Ekran çözünürlüğü kısıtlaması (küçük ekranda gereksiz 4K indirmesini önler).
+### 2. Gelişmiş Ses Alt Sistemi (`AudioEnhancer`)
+- `AudioContext` ve `createMediaElementSource` üzerinden HTMLMediaElement'e bağlanır.
+- **5-Bant Parametrik Ekolayzer:** Akustik, bas artırıcı, bas düşürücü, elektronik, rock ve vokal profilleri için kalibre edilmiş 5 adet `BiquadFilterNode` katmanı sunar.
+- **Çift Kanallı Stereo Ses:** Tek kanallı veya dengesiz ses kayıtlarını dengelemek için `ChannelSplitterNode` ve `ChannelMergerNode` düğümlerini kullanır.
+- **Gerçek Zamanlı Dalga Formu Görselleştirici:** `AnalyserNode.getByteFrequencyData()` ile canlı frekans dalga formunu ekrana çizer.
 
-3. **Canlı Yayın Senkronizasyon Motoru (`src/live.rs`)**:
-   - Hedef gecikme ile gerçek canlı yayın ucu arasındaki farkı (drift) sürekli hesaplar.
-   - Ses tonunu bozmadan mikro oynatma hızlarıyla (`0.95x` - `1.05x`) yayını senkronize tutar.
+### 3. Kullanıcı Arayüzü ve Tema Sistemi (`@kyrspect/ui`)
+- **8 Özel Tema:** `default`, `dracula`, `nord`, `cyberpunk`, `sunset`, `emerald`, `oled`, `minimal` temaları CSS değişkenleri üzerinden canlı değiştirilebilir.
+- **Performans Modu:** Düşük donanımlı telefonlar veya pil tasarrufu için cam efektlerini (`backdrop-filter: blur()`), ağır gölgeleri ve geçiş animasyonlarını anında kapatır.
+- **Hafif DOM:** Tüm oynatıcı bileşenleri dahil toplamda yalnızca **63 DOM düğümü** üretir.
 
-4. **Telemetri & İstatistik Motoru (`src/stats.rs`)**:
-   - Anlık ve yumuşatılmış FPS hesaplar.
-   - Bağlantı kalitesini `"Excellent"`, `"Good"`, `"Fair"`, `"Poor"` olarak derecelendirir.
-
-5. **WebVTT Altyazı Motoru (`src/subtitles.rs`)**:
-   - Yüksek hızlı altyazı ayrıştırma ve zaman çizelgesinde $O(\log N)$ sürede ikili arama ile anlık cue bulma.
+### 4. WebAssembly Hızlandırması (`@kyrspect/wasm`)
+- **Sıfır Ayırma ile Altyazı Arama:** WebVTT zaman çizelgesinde $O(\log N)$ sürede ikili arama.
+- **Çift EWMA ABR:** Hızlı ($\alpha=0.3$) ve yavaş ($\alpha=0.05$) katsayılarla ağ dalgalanmalarında titremeyi önleyen akıllı kalite seçimi.
+- **Canlı Yayın Drift Düzeltmesi:** $0.95\times$ ve $1.05\times$ mikro hızlarla ses perdesini bozmadan yayını canlı uçta tutma.
 
 ---
 
-## JavaScript köprüsü (`KyrspectWasm`)
+## Mimari Yol Haritası ve Gelecek Odak
 
-Rust modülü ilk boyamanın kritik yolunda değildir.
+[TODO.md](../../TODO.md) dokümanında belirtilen açık işler doğrultusunda odaklanılacak ana alanlar:
 
-- Arayüz hemen bağlanır. WASM örneği arka planda oluşur.
-- HLS / DASH adaptörleri ilk kullanımda oluşturulur.
-- Kaynak türü JS’te çözülür (MIME, `.m3u8`, `.mpd`). `analyzeSource` yalnızca ipucu yoksa çalışır.
-- WASM oynatıcıda DRM isteğe bağlıdır ve core ile aynıdır: lisans URL’si yoksa varsayılan oynatma yolu kullanılır. [DRM](./drm.md) ve [yükleme](./yukleme.md).
+### 1. DASH Güçlendirmesi ve Dayanıklılık
+- **Segment Tampon Yönetimi:** Hızlı bant genişliği düşüşlerinde DASH segment tamponlama stratejilerinin güçlendirilmesi.
+- **Dinamik MPD ve Canlı Senkronizasyon:** Canlı DASH yayınlarında sunucu zaman kaymasına (`SegmentTemplate` / `SegmentTimeline`) karşı ek koruma.
+- **Çoklu Codec Adaptasyonu:** Farklı ses/video codec kümeleri arasında dinamik kanal geçişleri.
+- **DASH Yük Devretme (Failover) & Multi-CDN:** Ağ kesintilerinde otomatik yedek `baseURL` geçişi.
+- **dash.js v5 Entegrasyonu:** dash.js iç telemetrisinin doğrudan Kyrspect teşhis paneline aktarılması.
+
+### 2. Paket Boyutu ve Paketleme Optimizasyonu
+- **Dinamik Panel Yükleme (Bundle Splitting):** Ağır UI alt panellerinin (Stats for Nerds, Audio Visualizer, Ekolayzer) yalnızca tıklandığında talep üzerine (lazy) yüklenmesi.
+- **Paket Boyutu Hedefi:** SVG ikonların ve CSS kurallarının optimize edilerek tam paketin (Core + UI) Gzip boyutunun 50 KB altına çekilmesi.
+- **Tree-Shaking Sınırları:** Paket dışa aktarımlarının (exports) bağımsız modül kullanımını en üst düzeye çıkaracak şekilde iyileştirilmesi.

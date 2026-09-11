@@ -76,22 +76,28 @@ const player = new Kyrspect(videoElement, {
 });
 ```
 
-Theme the default UI with CSS variables (or change it at runtime):
+Theme the default UI with 8 built-in themes or custom CSS variables (runtime switchable):
 
 ```javascript
 const player = new Kyrspect('#player', {
   src: 'https://example.com/video.mp4',
   ui: {
-    theme: {
-      accent: '#6d4aff',
-      background: '#000',
-      text: '#fff',
-      radius: '10px',
-    },
+    // Built-in: 'default' | 'dracula' | 'nord' | 'cyberpunk' | 'sunset' | 'emerald' | 'oled' | 'minimal'
+    theme: 'dracula',
+    // Disable blurs & heavy transitions on low-spec hardware:
+    performanceMode: false,
+    // Real-time audio waveform overlay:
+    audioVisualizer: false,
   },
 });
 
+// Switch themes dynamically:
+player.setTheme('cyberpunk');
+// Or pass custom CSS variable overrides:
 player.setTheme({ accent: '#ff4d6a' });
+
+// Toggle performance mode dynamically:
+player.setPerformanceMode(true);
 ```
 
 The default UI is localized. Pass `language` when the player is created (`auto` follows the browser, then falls back to English). Built-in packs are English, Turkish, Spanish, French, German, and Portuguese. Individual strings can still be overridden.
@@ -342,6 +348,21 @@ player.enterFullscreen()
 player.enterPictureInPicture()
 player.seekToLiveEdge()
 
+// Theme & Performance
+player.setTheme('dracula') // 'cyberpunk' | 'nord' | 'dracula' | 'sunset' | 'emerald' | 'oled' | 'minimal' | 'default' | UITheme
+player.getTheme()
+player.getThemeName()
+player.setPerformanceMode(true) // disables blurs, heavy shadows & transitions
+player.isPerformanceMode()
+
+// Audio & Visualizer
+player.setAudioVisualizer(true)
+player.isAudioVisualizerVisible()
+player.setDualChannelAudio(true)
+player.isDualChannelAudioEnabled()
+player.setEqualizerPreset('bass-booster') // 'acoustic' | 'bass-booster' | 'bass-reducer' | 'electronic' | 'rock' | 'vocal'
+player.getEqualizerPreset()
+
 player.currentTime
 player.duration
 player.buffered
@@ -421,6 +442,30 @@ Vitest + jsdom covers EventEmitter, source resolution, capabilities, config merg
 ```bash
 npm test
 ```
+
+## Benchmarks & Performance Audit
+
+Kyrspect ships with an automated, reproducible benchmark suite measuring bundle sizes, cold/warm initialization latency, DOM node allocations, and teardown cleanup across 500 iterations:
+
+```bash
+npm run benchmark
+```
+
+Key findings compared against **Video.js**, **Shaka Player**, and **Plyr**:
+- **Bundle Footprint:** Kyrspect Complete (Core + UI) is **~57.5 KB gzip** (~1/4 the size of Video.js with streaming, ~1/3 the size of Shaka Player with UI).
+- **Core Engine Latency:** Headless core initialization takes **0.313 ms** (3,192 ops/sec).
+- **Full UI Latency:** Full DOM, theme, and audio setup completes in **2.778 ms** (360 ops/sec).
+- **DOM Footprint:** Exactly **63 DOM nodes** for the complete UI (including settings, stats overlay, visualizer, and equalizers).
+
+Read the complete benchmark report and deep-dive comparisons:
+- [English: Alternatives Comparison & Benchmarks Audit](./docs/en/alternatives-and-benchmarks.md)
+- [Türkçe: Alternatifler Kıyaslaması ve Benchmark Raporu](./docs/tr/alternatifler-ve-benchmark.md)
+
+## Roadmap & Upcoming Focus
+
+Active and planned developments are tracked in [TODO.md](./TODO.md). Key areas of current focus:
+1. **DASH Hardening & Streaming Resiliency**: Advanced dynamic buffer strategies, live drift sync, multi-codec adaptation sets, DASH multi-CDN failover, and dash.js v5 optimizations.
+2. **Package Optimization & Tree-Shaking**: On-demand lazy-loading for heavier UI panels (Stats, Visualizer, Equalizer), CSS/SVG payload minification targeting `< 50 KB gzip`, and build-level dead code elimination.
 
 ## License
 
