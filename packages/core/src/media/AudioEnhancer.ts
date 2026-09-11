@@ -51,6 +51,7 @@ export class AudioEnhancer {
   private currentPreset: EqualizerPresetId = "flat";
   private customGains: number[] = [0, 0, 0, 0, 0];
   private initialized = false;
+  private cleanupListeners: Array<() => void> = [];
 
   constructor(private readonly media: HTMLMediaElement) {
     // If the media element already has an enhancer attached, we can link to it.
@@ -141,6 +142,10 @@ export class AudioEnhancer {
       };
       this.media.addEventListener("play", onPlay);
       this.media.addEventListener("playing", onPlay);
+      this.cleanupListeners.push(() => {
+        this.media.removeEventListener("play", onPlay);
+        this.media.removeEventListener("playing", onPlay);
+      });
     } catch {
       // AudioContext unavailable or denied
       this.initialized = false;
@@ -214,16 +219,38 @@ export class AudioEnhancer {
   }
 
   destroy(): void {
+    for (const unsub of this.cleanupListeners) unsub();
+    this.cleanupListeners = [];
     try {
       if (this.sourceNode) {
         this.sourceNode.disconnect();
       }
+      this.splitterNode?.disconnect();
+      this.mergerNode?.disconnect();
+      this.leftDirectGain?.disconnect();
+      this.rightDirectGain?.disconnect();
+      this.leftToRightGain?.disconnect();
+      this.rightToLeftGain?.disconnect();
+      for (const filter of this.filterNodes) {
+        filter.disconnect();
+      }
+      this.filterNodes = [];
+      this.analyserNode?.disconnect();
       if (this.ctx && this.ctx.state !== "closed") {
         void this.ctx.close();
       }
     } catch {
       // Ignore cleanup error
     }
+    this.sourceNode = null;
+    this.splitterNode = null;
+    this.mergerNode = null;
+    this.leftDirectGain = null;
+    this.rightDirectGain = null;
+    this.leftToRightGain = null;
+    this.rightToLeftGain = null;
+    this.analyserNode = null;
+    this.ctx = null;
     this.initialized = false;
     delete (this.media as unknown as { __kyrspect_audio_enhancer?: AudioEnhancer }).__kyrspect_audio_enhancer;
     delete (this.media as HTMLMediaElement & { __kyrspect_analyser?: AnalyserNode }).__kyrspect_analyser;

@@ -13,6 +13,16 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
+    },
+    "./stats": {
+      "types": "./dist/stats.d.ts",
+      "import": "./dist/stats.js",
+      "require": "./dist/stats.cjs"
+    },
+    "./waveform": {
+      "types": "./dist/waveform.d.ts",
+      "import": "./dist/waveform.js",
+      "require": "./dist/waveform.cjs"
     }
   },
   "files": [

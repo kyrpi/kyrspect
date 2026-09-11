@@ -460,6 +460,7 @@ export class Kyrspect {
     this.ignoringMediaErrors = true;
 
     try {
+      this.drm?.detachNative();
       const resolved = resolveSourceSync(source, this.media);
       const context = this.createAdapterContext(source);
       await this.playback.load(this.media, resolved, context);
@@ -490,6 +491,7 @@ export class Kyrspect {
   async unload(): Promise<void> {
     if (this.destroyed) return;
     this.media.pause();
+    this.drm?.detachNative();
     await this.playback.unload();
     this.state.patch({ status: "idle", currentTime: 0 });
   }

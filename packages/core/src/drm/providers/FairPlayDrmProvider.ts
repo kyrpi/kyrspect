@@ -51,34 +51,82 @@ export class FairPlayDrmProvider implements DrmProvider {
       });
     }
 
+    let activeSession: MediaKeySession | null = null;
+    let activeMediaKeys: MediaKeys | null = null;
+
     const onEncrypted = (event: Event) => {
-      void this.handleEncrypted(video, event as MediaEncryptedEvent, drm);
+      void (async () => {
+        try {
+          const fairplay = drm.fairplay;
+          if (!fairplay || !(event as MediaEncryptedEvent).initData) return;
+
+          const access = await navigator.requestMediaKeySystemAccess(this.keySystem, [
+            {
+              initDataTypes: [(event as MediaEncryptedEvent).initDataType || "sinf"],
+              videoCapabilities: [{ contentType: 'video/mp4; codecs="avc1.42E01E"' }],
+            },
+          ]);
+          const keys = await access.createMediaKeys();
+          activeMediaKeys = keys;
+
+          let certRes: Response;
+          try {
+            certRes = await fetch(fairplay.certificateUrl);
+          } catch (fetchErr) {
+            throw new KyrspectError({
+              code: "fairplay-cert-network",
+              category: "DRM_ERROR",
+              message: "Failed to fetch FairPlay application certificate.",
+              originalError: fetchErr,
+            });
+          }
+
+          if (!certRes.ok) {
+            throw new KyrspectError({
+              code: "fairplay-cert-http",
+              category: "DRM_ERROR",
+              message: `FairPlay certificate request returned status ${certRes.status}.`,
+            });
+          }
+
+          const certificate = await certRes.arrayBuffer();
+          await keys.setServerCertificate(certificate);
+          await video.setMediaKeys(keys);
+
+          const session = keys.createSession();
+          activeSession = session;
+          const contentId = fairplay.contentId ?? fairplay.extractContentId?.((event as MediaEncryptedEvent).initData!) ?? extractFairPlayContentId((event as MediaEncryptedEvent).initData!);
+          session.addEventListener("message", (messageEvent) => {
+            void this.requestLicense(session, (messageEvent as MediaKeyMessageEvent).message, drm, contentId);
+          });
+          await session.generateRequest((event as MediaEncryptedEvent).initDataType || "sinf", (event as MediaEncryptedEvent).initData!);
+        } catch (error) {
+          // Propagate or log DRM initialization failure
+          if (error instanceof KyrspectError) throw error;
+        }
+      })();
     };
+
     video.addEventListener("encrypted", onEncrypted);
-    return () => video.removeEventListener("encrypted", onEncrypted);
-  }
-
-  private async handleEncrypted(video: HTMLVideoElement, event: MediaEncryptedEvent, drm: DrmOptions): Promise<void> {
-    const fairplay = drm.fairplay;
-    if (!fairplay || !event.initData) return;
-
-    const access = await navigator.requestMediaKeySystemAccess(this.keySystem, [
-      {
-        initDataTypes: [event.initDataType || "sinf"],
-        videoCapabilities: [{ contentType: 'video/mp4; codecs="avc1.42E01E"' }],
-      },
-    ]);
-    const keys = await access.createMediaKeys();
-    const certificate = await (await fetch(fairplay.certificateUrl)).arrayBuffer();
-    await keys.setServerCertificate(certificate);
-    await video.setMediaKeys(keys);
-
-    const session = keys.createSession();
-    const contentId = fairplay.contentId ?? fairplay.extractContentId?.(event.initData) ?? extractFairPlayContentId(event.initData);
-    session.addEventListener("message", (messageEvent) => {
-      void this.requestLicense(session, (messageEvent as MediaKeyMessageEvent).message, drm, contentId);
-    });
-    await session.generateRequest(event.initDataType || "sinf", event.initData);
+    return () => {
+      video.removeEventListener("encrypted", onEncrypted);
+      if (activeSession) {
+        try {
+          void activeSession.close();
+        } catch {
+          // Ignored
+        }
+        activeSession = null;
+      }
+      if (activeMediaKeys) {
+        try {
+          void video.setMediaKeys(null);
+        } catch {
+          // Ignored
+        }
+        activeMediaKeys = null;
+      }
+    };
   }
 
   private async requestLicense(

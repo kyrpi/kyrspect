@@ -69,21 +69,58 @@ export function createAudioWaveform(
 
   let analyser: AnalyserNode | null = null;
   let freqData: Uint8Array | null = null;
+  let ownedAudioCtx: AudioContext | null = null;
+  let ownedSourceNode: MediaElementAudioSourceNode | null = null;
+
+  const isPerformanceMode = (): boolean => {
+    return Boolean(
+      (player as unknown as { isPerformanceMode?: () => boolean }).isPerformanceMode?.() ||
+      (player as unknown as { getPerformanceMode?: () => boolean }).getPerformanceMode?.()
+    );
+  };
 
   const setupAnalyser = () => {
-    if (analyser || typeof window === "undefined") return;
+    if (analyser || isPerformanceMode() || typeof window === "undefined") return;
     try {
-      const AudioCtx =
-        window.AudioContext ||
-        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      if (!AudioCtx || !player.media) return;
+      const playerWithEnhancer = player as unknown as {
+        getAudioEnhancer?: () => { getAnalyserNode(): AnalyserNode | null };
+      };
+      const fromEnhancer = playerWithEnhancer.getAudioEnhancer?.()?.getAnalyserNode();
+      if (fromEnhancer) {
+        analyser = fromEnhancer;
+        freqData = new Uint8Array(analyser.frequencyBinCount);
+        return;
+      }
 
-      const mediaWithAnalyser = player.media as HTMLMediaElement & { __kyrspect_analyser?: AnalyserNode };
-      if (mediaWithAnalyser.__kyrspect_analyser) {
+      const mediaWithAnalyser = player.media as (HTMLMediaElement & {
+        __kyrspect_analyser?: AnalyserNode;
+        __kyrspect_audio_enhancer?: { getAnalyserNode(): AnalyserNode | null };
+      }) | undefined;
+
+      if (mediaWithAnalyser?.__kyrspect_audio_enhancer) {
+        const node = mediaWithAnalyser.__kyrspect_audio_enhancer.getAnalyserNode();
+        if (node) {
+          analyser = node;
+          freqData = new Uint8Array(analyser.frequencyBinCount);
+          return;
+        }
+      }
+
+      if (mediaWithAnalyser?.__kyrspect_analyser) {
         analyser = mediaWithAnalyser.__kyrspect_analyser;
         freqData = new Uint8Array(analyser.frequencyBinCount);
         return;
       }
+
+      // Avoid creating duplicate MediaElementSource on already attached media
+      if (mediaWithAnalyser && (mediaWithAnalyser as unknown as { __kyrspect_media_sourced?: boolean }).__kyrspect_media_sourced) {
+        return;
+      }
+
+      const AudioCtx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (!AudioCtx || !player.media) return;
 
       const audioCtx = new AudioCtx();
       const source = audioCtx.createMediaElementSource(player.media);
@@ -92,7 +129,13 @@ export function createAudioWaveform(
       node.smoothingTimeConstant = 0.75;
       source.connect(node);
       node.connect(audioCtx.destination);
-      mediaWithAnalyser.__kyrspect_analyser = node;
+
+      ownedAudioCtx = audioCtx;
+      ownedSourceNode = source;
+      (player.media as unknown as { __kyrspect_media_sourced?: boolean }).__kyrspect_media_sourced = true;
+      if (mediaWithAnalyser) {
+        mediaWithAnalyser.__kyrspect_analyser = node;
+      }
       analyser = node;
       freqData = new Uint8Array(node.frequencyBinCount);
     } catch {
@@ -218,13 +261,14 @@ export function createAudioWaveform(
 
     ctx.restore();
 
-    if (isPlaying && isVisible && typeof requestAnimationFrame !== "undefined") {
+    if (isPlaying && isVisible && !isPerformanceMode() && typeof requestAnimationFrame !== "undefined") {
       animationFrameId = requestAnimationFrame(render);
     }
   };
 
   const scheduleRender = () => {
     if (typeof cancelAnimationFrame !== "undefined") cancelAnimationFrame(animationFrameId);
+    if (!isVisible || isPerformanceMode()) return;
     if (typeof requestAnimationFrame !== "undefined") {
       animationFrameId = requestAnimationFrame(render);
     } else {
@@ -348,6 +392,24 @@ export function createAudioWaveform(
       canvas.removeEventListener("pointerup", onPointerUp);
       canvas.removeEventListener("pointercancel", onPointerUp);
       for (const unsub of unsubs) unsub();
+      if (ownedSourceNode) {
+        try {
+          ownedSourceNode.disconnect();
+        } catch {
+          // Ignored
+        }
+        ownedSourceNode = null;
+      }
+      if (ownedAudioCtx && ownedAudioCtx.state !== "closed") {
+        try {
+          void ownedAudioCtx.close();
+        } catch {
+          // Ignored
+        }
+        ownedAudioCtx = null;
+      }
+      analyser = null;
+      freqData = null;
       canvas.remove();
       hoverLine.remove();
     },

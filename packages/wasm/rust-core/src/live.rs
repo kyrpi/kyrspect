@@ -22,8 +22,16 @@ pub struct LiveEngine {
 
 impl LiveEngine {
     pub fn new(target_latency: f64, max_latency: f64) -> Self {
-        let target = if target_latency > 0.0 { target_latency } else { 3.0 };
-        let max = if max_latency > target { max_latency } else { target * 2.5 };
+        let target = if target_latency > 0.0 {
+            target_latency
+        } else {
+            3.0
+        };
+        let max = if max_latency > target {
+            max_latency
+        } else {
+            target * 2.5
+        };
         Self {
             target_latency: target,
             max_latency: max,

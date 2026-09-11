@@ -26,8 +26,15 @@ pub struct AbrEngine {
     samples_count: usize,
     default_bandwidth: f64,
     min_buffer_for_upswitch_sec: f64,
+    #[allow(dead_code)]
     max_buffer_sec: f64,
     safety_factor: f64, // percentage of estimated bandwidth to use (e.g. 0.8)
+}
+
+impl Default for AbrEngine {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl AbrEngine {
@@ -61,8 +68,10 @@ impl AbrEngine {
             self.slow_estimate = instant_bandwidth;
             self.bandwidth_ewma = instant_bandwidth;
         } else {
-            self.fast_estimate = self.alpha_fast * instant_bandwidth + (1.0 - self.alpha_fast) * self.fast_estimate;
-            self.slow_estimate = self.alpha_slow * instant_bandwidth + (1.0 - self.alpha_slow) * self.slow_estimate;
+            self.fast_estimate =
+                self.alpha_fast * instant_bandwidth + (1.0 - self.alpha_fast) * self.fast_estimate;
+            self.slow_estimate =
+                self.alpha_slow * instant_bandwidth + (1.0 - self.alpha_slow) * self.slow_estimate;
             // Conservative estimate: take the minimum of fast and slow to prevent aggressive upswitches
             self.bandwidth_ewma = self.fast_estimate.min(self.slow_estimate);
         }
@@ -93,7 +102,10 @@ impl AbrEngine {
             };
         }
 
-        if is_manual && current_quality_index >= 0 && (current_quality_index as usize) < qualities.len() {
+        if is_manual
+            && current_quality_index >= 0
+            && (current_quality_index as usize) < qualities.len()
+        {
             return AbrDecision {
                 selected_index: current_quality_index,
                 reason: "manual_override".to_string(),
@@ -132,24 +144,23 @@ impl AbrEngine {
                 true
             };
 
-            if is_bw_suitable && (is_res_suitable || best_idx == 0) {
-                if q.bitrate >= best_bitrate {
-                    best_bitrate = q.bitrate;
-                    best_idx = idx;
-                }
+            if is_bw_suitable && (is_res_suitable || best_idx == 0) && q.bitrate >= best_bitrate {
+                best_bitrate = q.bitrate;
+                best_idx = idx;
             }
         }
 
         // Hysteresis: if proposing to upswitch, require enough buffer
-        if (best_idx as i32) > current_quality_index && current_quality_index >= 0 {
-            if buffer_length_sec < self.min_buffer_for_upswitch_sec {
-                return AbrDecision {
-                    selected_index: current_quality_index,
-                    reason: "hysteresis_buffer_filling".to_string(),
-                    estimated_bandwidth_bps: self.bandwidth_ewma,
-                    buffer_length_sec,
-                };
-            }
+        if (best_idx as i32) > current_quality_index
+            && current_quality_index >= 0
+            && buffer_length_sec < self.min_buffer_for_upswitch_sec
+        {
+            return AbrDecision {
+                selected_index: current_quality_index,
+                reason: "hysteresis_buffer_filling".to_string(),
+                estimated_bandwidth_bps: self.bandwidth_ewma,
+                buffer_length_sec,
+            };
         }
 
         AbrDecision {

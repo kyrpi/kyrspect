@@ -4,468 +4,136 @@
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0)
 [![WebAssembly](https://img.shields.io/badge/WebAssembly-Rust%20Engine-6366f1?logo=webassembly)](https://github.com/kyrpi/kyrspect)
 
-Modern video playback for the web — available in both high-performance **WebAssembly (`@kyrspect/wasm`)** and lightweight TypeScript (`@kyrspect/core`).
+> Modern, lightweight, framework-agnostic video playback engine for the web.
 
-Open Source at: [https://github.com/kyrpi/kyrspect](https://github.com/kyrpi/kyrspect)
+---
 
-Documentation: [docs/](./docs/README.md) (English and Turkish). Roadmap: [TODO.md](./TODO.md). Licensed under [Apache License 2.0](./LICENSE).
+## What is Kyrspect?
 
-Kyrspect is a framework-agnostic video playback engine. It sits on top of `HTMLVideoElement`, plays progressive media, HLS, and DASH through adapters, and ships an optional default UI. React is a thin wrapper around the core engine — it never owns playback.
+**Kyrspect** is a modular video playback engine designed for high reliability, strict memory lifecycle management, and optimal bundle size. It sits on top of standard `HTMLVideoElement`, orchestrating progressive media, HLS, and DASH through dedicated, isolated adapters.
 
-```text
-HTMLVideoElement
-       ↓
-Kyrspect Core
-       ↓
-Playback Adapters
-       ↓
-HLS / DASH / Native / MediaStream / Progressive
-       ↓
-UI
-       ↓
-Framework Adapters
-       ↓
-React
-```
+Kyrspect offers both a lightweight TypeScript core (`@kyrspect/core`) and an optional WebAssembly acceleration engine (`@kyrspect/wasm`), alongside modern themeable UI components (`@kyrspect/ui`) and official React bindings (`@kyrspect/react`).
+
+## Why Kyrspect?
+
+- **Lean & Modular Footprint:** The core playback engine remains tiny (~30 KB gzip). Heavier streaming engines (dash.js, hls.js) and UI features (Stats for Nerds, Audio Visualizer) are decoupled and loaded only when requested.
+- **Strict Resource Cleanup:** Zero memory and event listener leaks across repeated `create -> load -> play -> destroy -> create` lifecycles.
+- **Enterprise-grade Streaming & DRM:** First-class HLS (Native / hls.js MSE) and DASH (dash.js MSE) support with modular DRM (Widevine, FairPlay, PlayReady) that introduces zero overhead when unused.
+- **Web Audio & Presentation Controls:** Built-in 5-band equalizer, stereo distribution, real-time waveform visualizer, 8 runtime themes, and a dedicated low-spec hardware **Performance Mode**.
+- **WebAssembly Ready:** High-throughput Rust-powered ABR decision engine and subtitle parser for CPU-constrained environments.
+
+---
 
 ## Installation
+
+Install the core playback engine:
 
 ```bash
 npm install @kyrspect/core
 ```
 
-React:
+For React applications:
 
 ```bash
-npm install @kyrspect/react @kyrspect/core
+npm install @kyrspect/core @kyrspect/react
 ```
 
-## Vanilla JS Usage
-
-```javascript
-import { Kyrspect } from '@kyrspect/core';
-
-const player = new Kyrspect('#player', {
-  src: 'https://example.com/video.mp4',
-});
-
-player.play();
-```
-
-A container or an existing `HTMLVideoElement` both work:
-
-```javascript
-const element = document.querySelector('#player');
-
-const player = new Kyrspect(element, {
-  src: 'https://example.com/master.m3u8',
-  autoplay: false,
-  controls: true,
-});
-
-player.on('ready', () => {
-  console.log('Kyrspect ready');
-});
-```
-
-Headless (bring your own UI):
-
-```javascript
-const player = new Kyrspect(videoElement, {
-  controls: false,
-});
-```
-
-Theme the default UI with 8 built-in themes or custom CSS variables (runtime switchable):
-
-```javascript
-const player = new Kyrspect('#player', {
-  src: 'https://example.com/video.mp4',
-  ui: {
-    // Built-in: 'default' | 'dracula' | 'nord' | 'cyberpunk' | 'sunset' | 'emerald' | 'oled' | 'minimal'
-    theme: 'dracula',
-    // Disable blurs & heavy transitions on low-spec hardware:
-    performanceMode: false,
-    // Real-time audio waveform overlay:
-    audioVisualizer: false,
-  },
-});
-
-// Switch themes dynamically:
-player.setTheme('cyberpunk');
-// Or pass custom CSS variable overrides:
-player.setTheme({ accent: '#ff4d6a' });
-
-// Toggle performance mode dynamically:
-player.setPerformanceMode(true);
-```
-
-The default UI is localized. Pass `language` when the player is created (`auto` follows the browser, then falls back to English). Built-in packs are English, Turkish, Spanish, French, German, and Portuguese. Individual strings can still be overridden.
-
-```javascript
-const player = new Kyrspect('#player', {
-  src: 'https://example.com/video.mp4',
-  language: 'tr',
-  ui: {
-    labels: { settings: 'Seçenekler' },
-  },
-});
-
-player.setLanguage('es');
-```
-
-## React Usage
-
-```jsx
-import { KyrspectPlayer } from '@kyrspect/react';
-
-export default function App() {
-  return (
-    <KyrspectPlayer
-      src="https://example.com/master.m3u8"
-      autoplay={false}
-      controls
-      onReady={() => console.log('Kyrspect ready')}
-    />
-  );
-}
-```
-
-The component is declarative. Playback still runs in `@kyrspect/core`.
-
-```tsx
-import { useRef } from 'react';
-import { KyrspectPlayer, type KyrspectHandle } from '@kyrspect/react';
-
-const playerRef = useRef<KyrspectHandle>(null);
-
-<KyrspectPlayer ref={playerRef} src={video} />
-
-playerRef.current?.play();
-```
-
-`useKyrspectState()` subscribes to player state. `timeupdate` is throttled so React does not re-render on every frame.
-
-## HLS
-
-HLS is a first-class source, isolated behind `HlsPlaybackAdapter`.
-
-- Native HLS is used when the browser can play `application/vnd.apple.mpegurl`
-- Otherwise [hls.js](https://github.com/video-dev/hls.js) is used when Media Source Extensions are available
-- The rest of the player does not know which engine is active
-
-```javascript
-const player = new Kyrspect('#player', {
-  src: {
-    type: 'hls',
-    src: 'https://example.com/master.m3u8',
-  },
-  hls: {
-    preferNative: true,
-  },
-  live: {
-    lowLatency: true,
-    targetLatency: 3,
-  },
-});
-```
-
-String URLs are resolved with MIME type, capability detection, and only then playlist URL hints. Extension sniffing is never the sole signal. **hls.js is imported only when the MSE HLS engine is chosen** — progressive files do not load it.
-
-## DASH
-
-MPEG-DASH is a first-class source, isolated behind `DashPlaybackAdapter` and [dash.js](https://github.com/Dash-Industry-Forum/dash.js). There is no native browser DASH engine — playback always goes through MSE when available.
-
-```javascript
-const player = new Kyrspect('#player', {
-  src: {
-    type: 'dash',
-    src: 'https://example.com/manifest.mpd',
-  },
-  dash: {
-    capLevelToPlayerSize: true,
-    startLevel: 'auto',
-  },
-  live: {
-    lowLatency: true,
-    targetLatency: 3,
-  },
-});
-```
-
-`.mpd` URLs and `application/dash+xml` MIME types resolve to DASH automatically. Quality, audio, subtitle, and live APIs are the same as HLS. **dash.js is imported only when a DASH source is loaded.**
-
-## DRM
-
-Full notes: [docs/en/drm.md](./docs/en/drm.md) · [docs/tr/drm.md](./docs/tr/drm.md).
-
-Playback adapters only load HLS or DASH. Key systems live in `DrmManager`:
-
-```text
-Kyrspect Core
-  ├── PlaybackAdapter
-  │    ├── HLS
-  │    └── DASH
-  └── DRMManager
-       ├── Widevine
-       ├── PlayReady
-       └── FairPlay
-```
-
-DRM is optional. If `drm` is omitted (or has no license URL), playback stays on the default HLS / DASH / progressive path — `DrmManager` is not created and no EME setup runs.
-
-Kyrspect does not decrypt content. When DRM is configured, it sets up dash.js / hls.js / native EME with your license server.
-
-```javascript
-const player = new Kyrspect('#player', {
-  src: { type: 'dash', src: 'https://example.com/encrypted.mpd' },
-  drm: {
-    preferred: 'widevine',
-    widevine: {
-      licenseUrl: 'https://license.example/widevine',
-      headers: { Authorization: 'Bearer <token>' },
-    },
-    playready: {
-      licenseUrl: 'https://license.example/playready',
-    },
-  },
-});
-```
-
-FairPlay is HLS-only (Safari native or hls.js) and needs a certificate URL:
-
-```javascript
-drm: {
-  fairplay: {
-    licenseUrl: 'https://license.example/fairplay',
-    certificateUrl: 'https://license.example/fps.cer',
-  },
-}
-```
-
-A source can override player-level license URLs (headers are merged). `beforeLicenseRequest` can add per-request headers. Default `getCapabilities()` skips CDM probes; pass `{ drm: true }` for `widevine` / `playready` / `fairplay`.
-
-The same optional `drm` object is accepted by `@kyrspect/wasm`. If it is missing, WASM stays on the default playback path.
-
-## Startup
-
-Load-time notes: [docs/en/startup.md](./docs/en/startup.md) · [docs/tr/yukleme.md](./docs/tr/yukleme.md).
-
-Unencrypted playback does not construct DRM, does not probe CDMs, and does not download hls.js or dash.js unless that format is actually used. `@kyrspect/wasm` attaches UI before the WASM module is ready and classifies `.m3u8` / `.mpd` in JavaScript.
-
-## WebAssembly
+Optional WebAssembly acceleration engine:
 
 ```bash
 npm install @kyrspect/wasm
 ```
 
-```javascript
-import { KyrspectWasm } from '@kyrspect/wasm';
+---
 
-const player = new KyrspectWasm('#player', {
-  src: 'https://example.com/master.m3u8',
-  controls: true,
-});
-```
+## Quickstart
 
-WASM owns ABR, live drift, stats, and VTT parsing. HLS / DASH still run in JS adapters (`window.Hls` / `window.dashjs` when present). See [architecture](./docs/en/architecture.md).
-
-## Quality Selection
-
-Master playlist variants become quality levels (`id`, `width`, `height`, `bitrate`, codecs, frame rate).
+### Vanilla JavaScript
 
 ```javascript
-player.getQualities();
-player.setQuality(1080);
-player.enableAutoQuality();
+import { Kyrspect } from '@kyrspect/core';
 
-player.on('qualitychange', (event) => {
-  console.log(event.from, event.to, event.mode, event.reason);
-});
-```
-
-Auto mode uses the active adapter’s ABR (hls.js or dash.js) with Kyrspect’s own quality API on top. Manual selection overrides ABR; Auto is always available again.
-
-## Subtitles
-
-WebVTT tracks can be passed in config. HLS and DASH subtitle and audio tracks are also collected from the active adapter.
-
-```javascript
+// Attach to container or existing <video> element
 const player = new Kyrspect('#player', {
-  src: video,
-  tracks: [
-    { kind: 'subtitles', src: '/subtitles/en.vtt', lang: 'en', label: 'English', default: true },
-  ],
+  src: 'https://example.com/stream.m3u8',
+  controls: true,
+  autoplay: false,
 });
 
-player.setSubtitleTrack(id);
-player.disableSubtitles();
+player.on('ready', () => {
+  console.log('Player ready to play');
+});
+
+player.play();
 ```
 
-Caption text is rendered with `textContent`, never `innerHTML`.
+### React
 
-## Events
+```tsx
+import { KyrspectPlayer } from '@kyrspect/react';
 
-```javascript
-player.on('play', () => {});
-player.on('pause', () => {});
-player.on('ended', () => {});
-player.on('timeupdate', ({ currentTime }) => {});
-player.on('qualitychange', (event) => {});
-player.on('bufferstart', ({ reason }) => {});
-player.on('error', (error) => {});
-
-player.once('ready', () => {});
-player.off('play', handler);
+export default function VideoApp() {
+  return (
+    <KyrspectPlayer
+      src="https://example.com/manifest.mpd"
+      controls
+      autoplay={false}
+      onReady={() => console.log('Player ready')}
+    />
+  );
+}
 ```
 
-Events are type-safe. Core also emits `bandwidthchange`, `subtitlechange`, `audiotrackchange`, `fullscreenchange`, `pictureinpicturechange`, `liveedge`, and `autoplayblocked`.
+---
 
-## API
+## Key Features
 
-```ts
-player.play()
-player.pause()
-player.stop()
-player.seek(seconds)
-player.load(source)
-player.unload()
-player.destroy()
+- **Format Support:** Progressive MP4/WebM, HLS (Native Safari + MSE), MPEG-DASH (MSE via dash.js), and MediaStreams.
+- **Quality & ABR Management:** Auto adaptive bitrate with seamless manual quality override and hysteresis protection.
+- **Audio & Visual Enhancements:** 5-band equalizer presets, dual-channel audio matrix, and real-time audio waveform visualizer.
+- **Performance Mode:** Instant elimination of blurs, canvas drawing, backdrop filters, and animations for older and low-spec devices.
+- **Subtitles & Audio Tracks:** Multi-language track switching with WebVTT and embedded stream captioning.
+- **State Management & Events:** Type-safe event emitter covering standard playback, network stalls, live edge sync, and bitrate adjustments.
 
-player.mute()
-player.unmute()
-player.setVolume(value)
-
-player.setPlaybackRate(rate)
-player.setQuality(level | 'auto')
-player.enableAutoQuality()
-
-player.setSubtitleTrack(id)
-player.disableSubtitles()
-player.setAudioTrack(id)
-
-player.enterFullscreen()
-player.enterPictureInPicture()
-player.seekToLiveEdge()
-
-// Theme & Performance
-player.setTheme('dracula') // 'cyberpunk' | 'nord' | 'dracula' | 'sunset' | 'emerald' | 'oled' | 'minimal' | 'default' | UITheme
-player.getTheme()
-player.getThemeName()
-player.setPerformanceMode(true) // disables blurs, heavy shadows & transitions
-player.isPerformanceMode()
-
-// Audio & Visualizer
-player.setAudioVisualizer(true)
-player.isAudioVisualizerVisible()
-player.setDualChannelAudio(true)
-player.isDualChannelAudioEnabled()
-player.setEqualizerPreset('bass-booster') // 'acoustic' | 'bass-booster' | 'bass-reducer' | 'electronic' | 'rock' | 'vocal'
-player.getEqualizerPreset()
-
-player.currentTime
-player.duration
-player.buffered
-player.paused
-player.volume
-player.quality
-player.bandwidthEstimate
-player.bufferHealth
-player.isLive
-player.liveLatency
-
-player.getStats()
-```
-
-Capabilities:
-
-```ts
-const capabilities = await Kyrspect.getCapabilities();
-const drmCaps = await Kyrspect.getCapabilities({ drm: true });
-// { h264, hevc, vp9, av1, hls, dash, eme, mse, ... } — CDM flags need { drm: true }
-```
+---
 
 ## Browser Support
 
-Current Chrome, Edge, Firefox, and Safari. Features are gated by capability detection, not browser sniffing. Missing Picture-in-Picture, Fullscreen, MSE, HLS, or DASH disables that feature instead of breaking the player.
+Kyrspect targets modern evergreen browsers via capability detection:
+- **Google Chrome / Chromium-based** (Edge, Brave, Opera)
+- **Mozilla Firefox**
+- **Apple Safari** (iOS & macOS)
 
-## Development
+Playback adapts dynamically to host platform capabilities (e.g. Native HLS on Safari, MSE fallback on Chromium/Firefox).
 
-The demo playground ships a local `sample.mp4` so playback can be checked without
-network or CORS in the way. `npm run verify:ui` drives the running demo in real
-Chrome and reports container size, video state, control visibility, and the error
-overlay; `npm run diagnose:ui` dumps detailed element metrics for debugging.
+---
 
-This is an npm workspaces monorepo.
+## Documentation
 
-```text
-packages/core    TypeScript playback engine
-packages/wasm    Rust WASM engine + JS bridge
-packages/ui      default controls
-packages/react   React wrapper
-examples/        vanilla, react, hls, dash, livestream, demo
-docs/            English and Turkish documentation
-```
+Comprehensive guides, architectural details, and API references are located in [`docs/`](./docs/README.md):
 
-```bash
-npm install
-npm run build
-npm run typecheck
-npm test
-```
+- [Architecture & Modular Micro-Core](./docs/en/architecture.md)
+- [HLS Playback Guide](./docs/en/hls.md)
+- [DASH Playback Guide](./docs/en/dash.md)
+- [DRM Integration & Licensing (Widevine, PlayReady, FairPlay)](./docs/en/drm.md)
+- [WebAssembly Engine Integration (`@kyrspect/wasm`)](./docs/en/wasm.md)
+- [Performance Optimization & Low-Spec Mode](./docs/en/performance.md)
+- [Benchmark Results & Competitor Comparison](./docs/en/alternatives-and-benchmarks.md)
+- [Türkçe Dokümantasyon Dizini](./docs/tr/)
 
-Playgrounds:
+---
 
-```bash
-npm run dev:demo      # diagnostic playground
-npm run dev:vanilla
-npm run dev:react
-npm run dev:hls
-npm run dev:dash
-npm run dev:live
-```
+## Roadmap & Future Focus
 
-## Build
+Stabilization, hardening, and test coverage remain the primary focus. Future expansions planned for subsequent milestones:
+- Chromecast & AirPlay receiver adapters
+- Server-Side / Client-Side Ad Insertion (SSAI / CSAI - VAST / VMAP)
+- WebRTC & Low-Latency Streaming adapters
+- Offline persistent DRM playback & storage management
+- Modular analytics backends
+- Server-side / Edge transcoding integrations
 
-Packages emit ESM, CJS, TypeScript declarations, and source maps via `tsup`.
-
-```bash
-npm run build
-```
-
-`@kyrspect/core` does not import React. Importing `@kyrspect/react` is the only way to pull the React wrapper.
-
-## Testing
-
-Vitest + jsdom covers EventEmitter, source resolution, capabilities, config merging, quality helpers, errors, plugins, HLS and DASH adapter mapping (including the no-DRM path), optional DRM resolution, WASM source detection, subtitles, and destroy.
-
-```bash
-npm test
-```
-
-## Benchmarks & Performance Audit
-
-Kyrspect ships with an automated, reproducible benchmark suite measuring bundle sizes, cold/warm initialization latency, DOM node allocations, and teardown cleanup across 500 iterations:
-
-```bash
-npm run benchmark
-```
-
-Key findings compared against **Video.js**, **Shaka Player**, and **Plyr**:
-- **Bundle Footprint:** Kyrspect Complete (Core + UI) is **~57.5 KB gzip** (~1/4 the size of Video.js with streaming, ~1/3 the size of Shaka Player with UI).
-- **Core Engine Latency:** Headless core initialization takes **0.313 ms** (3,192 ops/sec).
-- **Full UI Latency:** Full DOM, theme, and audio setup completes in **2.778 ms** (360 ops/sec).
-- **DOM Footprint:** Exactly **63 DOM nodes** for the complete UI (including settings, stats overlay, visualizer, and equalizers).
-
-Read the complete benchmark report and deep-dive comparisons:
-- [English: Alternatives Comparison & Benchmarks Audit](./docs/en/alternatives-and-benchmarks.md)
-- [Türkçe: Alternatifler Kıyaslaması ve Benchmark Raporu](./docs/tr/alternatifler-ve-benchmark.md)
-
-## Roadmap & Upcoming Focus
-
-Active and planned developments are tracked in [TODO.md](./TODO.md). Key areas of current focus:
-1. **DASH Hardening & Streaming Resiliency**: Advanced dynamic buffer strategies, live drift sync, multi-codec adaptation sets, DASH multi-CDN failover, and dash.js v5 optimizations.
-2. **Package Optimization & Tree-Shaking**: On-demand lazy-loading for heavier UI panels (Stats, Visualizer, Equalizer), CSS/SVG payload minification targeting `< 50 KB gzip`, and build-level dead code elimination.
+---
 
 ## License
 

@@ -177,4 +177,60 @@ describe("DASH adapter", () => {
     expect(player.protectionData?.["com.widevine.alpha"]?.serverURL).toBe("https://license.example/widevine");
     await adapter.unload();
   });
+
+  it("handles audio and subtitle track switching", async () => {
+    const video = document.createElement("video");
+    const events = new EventEmitter<KyrspectEventMap>();
+    const adapter = new DashPlaybackAdapter();
+    const context: AdapterContext = {
+      options: { ...DEFAULT_OPTIONS },
+      events,
+      debug: () => undefined,
+      getHeaders: () => ({}),
+      drm: null,
+    };
+    await adapter.load(video, { type: "dash", src: "https://example.com/manifest.mpd" }, context);
+    adapter.setAudioTrack("en");
+    adapter.setSubtitleTrack("en");
+    adapter.setSubtitleTrack(null);
+    expect(adapter.getAudioTracks()).toHaveLength(1);
+    expect(adapter.getSubtitleTracks()).toHaveLength(1);
+    await adapter.unload();
+  });
+
+  it("reports live latency and sync position gracefully", async () => {
+    const video = document.createElement("video");
+    const events = new EventEmitter<KyrspectEventMap>();
+    const adapter = new DashPlaybackAdapter();
+    const context: AdapterContext = {
+      options: { ...DEFAULT_OPTIONS },
+      events,
+      debug: () => undefined,
+      getHeaders: () => ({}),
+      drm: null,
+    };
+    await adapter.load(video, { type: "dash", src: "https://example.com/live.mpd" }, context);
+    expect(adapter.getLiveLatency()).toBe(2.4);
+    expect(adapter.getLiveSyncPosition()).toBe(120);
+    await adapter.unload();
+  });
+
+  it("safely handles repeated unload and destroy calls without throwing", async () => {
+    const video = document.createElement("video");
+    const events = new EventEmitter<KyrspectEventMap>();
+    const adapter = new DashPlaybackAdapter();
+    const context: AdapterContext = {
+      options: { ...DEFAULT_OPTIONS },
+      events,
+      debug: () => undefined,
+      getHeaders: () => ({}),
+      drm: null,
+    };
+    await adapter.load(video, { type: "dash", src: "https://example.com/manifest.mpd" }, context);
+    await adapter.unload();
+    await adapter.unload();
+    adapter.destroy();
+    adapter.destroy();
+    expect(adapter.getQualities()).toHaveLength(0);
+  });
 });

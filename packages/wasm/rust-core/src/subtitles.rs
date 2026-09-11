@@ -40,7 +40,11 @@ impl SubtitleParser {
 
         while i < lines.len() {
             let line = lines[i].trim();
-            if line.is_empty() || line.starts_with("NOTE") || line.starts_with("STYLE") || line.starts_with("REGION") {
+            if line.is_empty()
+                || line.starts_with("NOTE")
+                || line.starts_with("STYLE")
+                || line.starts_with("REGION")
+            {
                 i += 1;
                 continue;
             }
@@ -84,7 +88,11 @@ impl SubtitleParser {
         }
 
         // Sort cues by start_time for binary searching
-        self.cues.sort_by(|a, b| a.start_time.partial_cmp(&b.start_time).unwrap_or(std::cmp::Ordering::Equal));
+        self.cues.sort_by(|a, b| {
+            a.start_time
+                .partial_cmp(&b.start_time)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
         self.cues.len()
     }
 

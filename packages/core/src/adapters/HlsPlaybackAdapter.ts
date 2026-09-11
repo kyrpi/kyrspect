@@ -179,7 +179,7 @@ export class HlsPlaybackAdapter implements PlaybackAdapter {
   ): Promise<void> {
     return new Promise((resolve, reject) => {
       const onParsed = () => {
-        this.qualities = hls.levels.map((level, index) => mapLevel(level, index));
+        this.qualities = (hls.levels ?? []).map((level, index) => mapLevel(level, index));
         context.debug("HLS", "Manifest loaded", `${this.qualities.length} levels`);
         context.events.emit("qualitylevelsloaded", { qualities: this.qualities });
         if (typeof context.options.quality === "number") {

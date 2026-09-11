@@ -618,19 +618,6 @@ export function attachDefaultUI(player: PlayerLike, options: UIOptions = {}): Pl
           },
         );
         addItem(
-          labels.performanceMode,
-          () => {
-            applyPerformanceMode(!performanceMode, true);
-            renderMenu();
-          },
-          {
-            toggle: true,
-            checked: performanceMode,
-            current: performanceMode ? labels.on : labels.off,
-            icon: icons.gauge,
-          },
-        );
-        addItem(
           labels.advancedSettings,
           () => {
             menuView = "advanced";

@@ -18,8 +18,12 @@
     "examples/*"
   ],
   "scripts": {
-    "build": "npm run build -w @kyrspect/ui && npm run build -w @kyrspect/core && npm run build -w @kyrspect/react",
-    "typecheck": "npm run typecheck -w @kyrspect/ui && npm run typecheck -w @kyrspect/core && npm run typecheck -w @kyrspect/react",
+    "build": "npm run build -w @kyrspect/ui && npm run build -w @kyrspect/core && npm run build -w @kyrspect/react && npm run build -w @kyrspect/wasm",
+    "typecheck": "npm run typecheck -w @kyrspect/ui && npm run typecheck -w @kyrspect/core && npm run typecheck -w @kyrspect/react && npm run typecheck -w @kyrspect/wasm",
+    "lint": "npm run rust:fmt && npm run rust:clippy",
+    "rust:fmt": "cargo fmt --manifest-path packages/wasm/rust-core/Cargo.toml -- --check",
+    "rust:clippy": "cargo clippy --manifest-path packages/wasm/rust-core/Cargo.toml",
+    "rust:test": "cargo test --manifest-path packages/wasm/rust-core/Cargo.toml",
     "test": "vitest run",
     "test:watch": "vitest",
     "verify:ui": "node scripts/verify.mjs",

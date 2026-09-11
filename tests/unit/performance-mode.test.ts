@@ -54,7 +54,7 @@ describe("hover scale and performance mode", () => {
     root.remove();
   });
 
-  it("provides performance mode toggle inside settings menu", () => {
+  it("provides performance mode toggle inside advanced settings menu and not in main menu", () => {
     const root = document.createElement("div");
     document.body.append(root);
 
@@ -67,8 +67,19 @@ describe("hover scale and performance mode", () => {
     expect(settingsBtn).toBeTruthy();
     settingsBtn?.click();
 
-    const menuItems = Array.from(root.querySelectorAll<HTMLButtonElement>(".kyrspect-menu-item"));
-    const perfItem = menuItems.find((item) => item.textContent?.includes("Performans Modu"));
+    // Verify it is NOT in main menu
+    const mainMenuItems = Array.from(root.querySelectorAll<HTMLButtonElement>(".kyrspect-menu-item"));
+    const perfItemInMain = mainMenuItems.find((item) => item.textContent?.includes("Performans Modu"));
+    expect(perfItemInMain).toBeUndefined();
+
+    // Navigate to Advanced Settings
+    const advancedItem = mainMenuItems.find((item) => item.textContent?.includes("Gelişmiş Ayarlar"));
+    expect(advancedItem).toBeTruthy();
+    advancedItem?.click();
+
+    // Verify it IS in advanced settings menu
+    const advMenuItems = Array.from(root.querySelectorAll<HTMLButtonElement>(".kyrspect-menu-item"));
+    const perfItem = advMenuItems.find((item) => item.textContent?.includes("Performans Modu"));
     expect(perfItem).toBeTruthy();
     expect(perfItem?.getAttribute("aria-checked")).toBe("false");
 

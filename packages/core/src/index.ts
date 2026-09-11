@@ -1,6 +1,13 @@
 export { Kyrspect, VERSION } from "./core/Kyrspect";
 export { EventEmitter } from "./events/EventEmitter";
-export { KyrspectError, normalizeError, userFacingErrorMessage } from "./errors/KyrspectError";
+export {
+  KyrspectError,
+  normalizeError,
+  userFacingErrorMessage,
+  mapToNormalizedCategory,
+  type KyrspectErrorCategory,
+  type NormalizedErrorCategory,
+} from "./errors/KyrspectError";
 export { KyrspectCapabilities } from "./utils/capabilities";
 export { NativePlaybackAdapter } from "./adapters/NativePlaybackAdapter";
 export { HlsPlaybackAdapter } from "./adapters/HlsPlaybackAdapter";
@@ -93,6 +100,4 @@ export type {
 } from "./types";
 export type { UIAspectRatio, UIFit, UILayout, ThemeInput } from "@kyrspect/ui";
 export type { LocaleCode } from "@kyrspect/ui";
-
-export type { KyrspectErrorCategory } from "./errors/KyrspectError";
 export type { KyrspectCapabilitySnapshot, CodecSupport, CapabilityProbeOptions } from "./utils/capabilities";

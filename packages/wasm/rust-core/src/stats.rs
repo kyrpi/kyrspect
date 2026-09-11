@@ -21,6 +21,12 @@ pub struct StatsEngine {
     stalls_count: u32,
 }
 
+impl Default for StatsEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl StatsEngine {
     pub fn new() -> Self {
         Self {
@@ -35,6 +41,7 @@ impl StatsEngine {
         self.stalls_count += 1;
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn compute(
         &mut self,
         total_frames: u64,
@@ -51,7 +58,7 @@ impl StatsEngine {
             let frame_delta = total_frames.saturating_sub(self.last_frame_count);
             let instant_fps = (frame_delta as f64) / delta_sec;
 
-            if instant_fps >= 0.0 && instant_fps <= 240.0 {
+            if (0.0..=240.0).contains(&instant_fps) {
                 if self.fps_smooth == 0.0 {
                     self.fps_smooth = instant_fps;
                 } else {

@@ -24,7 +24,14 @@ pub struct SourceInfo {
 }
 
 pub fn analyze_source(url: &str, mime_type_hint: Option<&str>) -> SourceInfo {
-    let clean_url = url.split('?').next().unwrap_or(url).split('#').next().unwrap_or(url).to_lowercase();
+    let clean_url = url
+        .split('?')
+        .next()
+        .unwrap_or(url)
+        .split('#')
+        .next()
+        .unwrap_or(url)
+        .to_lowercase();
 
     let (media_type, probable_mime) = if let Some(mime) = mime_type_hint {
         let m = mime.to_lowercase();

@@ -1,18 +1,20 @@
-mod state;
+#![allow(clippy::not_unsafe_ptr_arg_deref)]
+
 mod abr;
 mod live;
+mod source;
+mod state;
 mod stats;
 mod subtitles;
-mod source;
 
 use std::collections::HashMap;
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
 use std::sync::Mutex;
 
-use state::{PlayerStatus, StateEngine};
 use abr::{AbrEngine, QualityProfile};
 use live::LiveEngine;
+use state::{PlayerStatus, StateEngine};
 use stats::StatsEngine;
 use subtitles::SubtitleParser;
 
@@ -23,6 +25,12 @@ pub struct WasmPlayerInstance {
     pub stats: StatsEngine,
     pub subtitles: SubtitleParser,
     pub quality_profiles: Vec<QualityProfile>,
+}
+
+impl Default for WasmPlayerInstance {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl WasmPlayerInstance {
@@ -125,7 +133,9 @@ pub extern "C" fn kyrspect_wasm_update_playback(
 ) {
     with_instances(|instances| {
         if let Some(player) = instances.get_mut(&id) {
-            player.state.update_playback(current_time, duration, buffered_end);
+            player
+                .state
+                .update_playback(current_time, duration, buffered_end);
         }
     });
 }
@@ -226,8 +236,12 @@ pub extern "C" fn kyrspect_wasm_update_live(
 ) -> *mut c_char {
     let json_str = with_instances(|instances| {
         if let Some(player) = instances.get_mut(&id) {
-            let sync = player.live.update(is_live != 0, current_time, live_edge_time);
-            player.state.set_live_info(sync.is_live, sync.live_edge_distance, sync.at_live_edge);
+            let sync = player
+                .live
+                .update(is_live != 0, current_time, live_edge_time);
+            player
+                .state
+                .set_live_info(sync.is_live, sync.live_edge_distance, sync.at_live_edge);
             serde_json::to_string(&sync).unwrap_or_else(|_| "{}".to_string())
         } else {
             "{}".to_string()
@@ -305,7 +319,10 @@ pub extern "C" fn kyrspect_wasm_get_active_cues(id: u32, current_time: f64) -> *
 
 // Source Inspection
 #[no_mangle]
-pub extern "C" fn kyrspect_wasm_analyze_source(url_ptr: *const c_char, mime_ptr: *const c_char) -> *mut c_char {
+pub extern "C" fn kyrspect_wasm_analyze_source(
+    url_ptr: *const c_char,
+    mime_ptr: *const c_char,
+) -> *mut c_char {
     if url_ptr.is_null() {
         return CString::new("{}").unwrap().into_raw();
     }

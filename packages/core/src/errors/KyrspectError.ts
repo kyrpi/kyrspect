@@ -11,6 +11,39 @@ export type KyrspectErrorCategory =
   | "CORS_ERROR"
   | "UNKNOWN_ERROR";
 
+export type NormalizedErrorCategory =
+  | "NETWORK"
+  | "MEDIA"
+  | "MANIFEST"
+  | "DRM"
+  | "DECODE"
+  | "UNSUPPORTED"
+  | "INTERNAL";
+
+export function mapToNormalizedCategory(category: KyrspectErrorCategory): NormalizedErrorCategory {
+  switch (category) {
+    case "NETWORK_ERROR":
+    case "CORS_ERROR":
+      return "NETWORK";
+    case "MEDIA_ERROR":
+    case "PLAYBACK_ERROR":
+      return "MEDIA";
+    case "MANIFEST_ERROR":
+      return "MANIFEST";
+    case "DRM_ERROR":
+      return "DRM";
+    case "CODEC_ERROR":
+      return "DECODE";
+    case "UNSUPPORTED_FORMAT":
+    case "SOURCE_ERROR":
+      return "UNSUPPORTED";
+    case "SUBTITLE_ERROR":
+    case "UNKNOWN_ERROR":
+    default:
+      return "INTERNAL";
+  }
+}
+
 export interface KyrspectErrorInit {
   code: string;
   category: KyrspectErrorCategory;
@@ -23,15 +56,17 @@ export interface KyrspectErrorInit {
 export class KyrspectError extends Error {
   readonly code: string;
   readonly category: KyrspectErrorCategory;
+  readonly normalizedCategory: NormalizedErrorCategory;
   readonly fatal: boolean;
   readonly recoverable: boolean;
   readonly originalError?: unknown;
 
   constructor(init: KyrspectErrorInit) {
-    super(init.message);
+    super(init.message, { cause: init.originalError });
     this.name = "KyrspectError";
     this.code = init.code;
     this.category = init.category;
+    this.normalizedCategory = mapToNormalizedCategory(init.category);
     this.fatal = init.fatal ?? true;
     this.recoverable = init.recoverable ?? !this.fatal;
     this.originalError = init.originalError;
@@ -42,9 +77,11 @@ export class KyrspectError extends Error {
       name: this.name,
       code: this.code,
       category: this.category,
+      normalizedCategory: this.normalizedCategory,
       message: this.message,
       fatal: this.fatal,
       recoverable: this.recoverable,
+      cause: this.originalError,
     };
   }
 }

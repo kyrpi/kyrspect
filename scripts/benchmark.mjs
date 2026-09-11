@@ -41,6 +41,10 @@ function getBundleMetrics(filePath) {
 const coreMetrics = getBundleMetrics(path.resolve("packages/core/dist/index.js"));
 const uiMetrics = getBundleMetrics(path.resolve("packages/ui/dist/index.js"));
 const reactMetrics = getBundleMetrics(path.resolve("packages/react/dist/index.js"));
+const wasmGlueMetrics = getBundleMetrics(path.resolve("packages/wasm/dist/index.js"));
+
+const hlsMetrics = getBundleMetrics(path.resolve("node_modules/hls.js/dist/hls.mjs"));
+const dashMetrics = getBundleMetrics(path.resolve("node_modules/dashjs/dist/modern/esm/dash.all.min.js"));
 
 const combinedRaw = coreMetrics.raw + uiMetrics.raw;
 const combinedGzip = zlib.gzipSync(
@@ -50,6 +54,28 @@ const combinedGzip = zlib.gzipSync(
   ]),
   { level: 9 }
 ).length;
+
+const coreHlsRaw = coreMetrics.raw + hlsMetrics.raw;
+const coreHlsGzip = hlsMetrics.raw > 0 ? zlib.gzipSync(
+  Buffer.concat([
+    fs.readFileSync(path.resolve("packages/core/dist/index.js")),
+    fs.readFileSync(path.resolve("node_modules/hls.js/dist/hls.mjs")),
+  ]),
+  { level: 9 }
+).length : coreMetrics.gzip;
+
+const coreDashRaw = coreMetrics.raw + dashMetrics.raw;
+const coreDashGzip = dashMetrics.raw > 0 ? zlib.gzipSync(
+  Buffer.concat([
+    fs.readFileSync(path.resolve("packages/core/dist/index.js")),
+    fs.readFileSync(path.resolve("node_modules/dashjs/dist/modern/esm/dash.all.min.js")),
+  ]),
+  { level: 9 }
+).length : coreMetrics.gzip;
+
+// DRM footprint: core includes modular EME handlers without requiring external polyfills
+const drmActiveRaw = coreMetrics.raw;
+const drmActiveGzip = coreMetrics.gzip;
 
 function formatBytes(bytes) {
   if (bytes === 0) return "0 B";
@@ -65,18 +91,33 @@ console.log("===================================================================
 console.log("               KYRSPECT BENCHMARK SUITE & PERFORMANCE AUDIT                     ");
 console.log("================================================================================\n");
 
-console.log("[1/3] Measuring Bundle Sizes...\n");
+console.log("[1/3] Measuring Bundle Sizes (8 Architectural States)...\n");
 console.table([
-  { Package: "@kyrspect/core (Engine)", "Raw (ESM)": formatBytes(coreMetrics.raw), "Gzipped (lvl 9)": formatBytes(coreMetrics.gzip) },
-  { Package: "@kyrspect/ui (UI + 8 Themes + SVGs + i18n)", "Raw (ESM)": formatBytes(uiMetrics.raw), "Gzipped (lvl 9)": formatBytes(uiMetrics.gzip) },
-  { Package: "@kyrspect/react (React Wrapper)", "Raw (ESM)": formatBytes(reactMetrics.raw), "Gzipped (lvl 9)": formatBytes(reactMetrics.gzip) },
-  { Package: "Kyrspect Complete (Core + UI)", "Raw (ESM)": formatBytes(combinedRaw), "Gzipped (lvl 9)": formatBytes(combinedGzip) },
+  { State: "1. Core Engine (@kyrspect/core)", "Raw (ESM)": formatBytes(coreMetrics.raw), "Gzipped (lvl 9)": formatBytes(coreMetrics.gzip) },
+  { State: "2. UI Package (@kyrspect/ui)", "Raw (ESM)": formatBytes(uiMetrics.raw), "Gzipped (lvl 9)": formatBytes(uiMetrics.gzip) },
+  { State: "3. Complete Player (Core + UI)", "Raw (ESM)": formatBytes(combinedRaw), "Gzipped (lvl 9)": formatBytes(combinedGzip) },
+  { State: "4. React Wrapper (@kyrspect/react)", "Raw (ESM)": formatBytes(reactMetrics.raw), "Gzipped (lvl 9)": formatBytes(reactMetrics.gzip) },
+  { State: "5. WASM Engine Glue (@kyrspect/wasm)", "Raw (ESM)": formatBytes(wasmGlueMetrics.raw), "Gzipped (lvl 9)": formatBytes(wasmGlueMetrics.gzip) },
+  { State: "6. HLS Active (Core + hls.js MSE)", "Raw (ESM)": formatBytes(coreHlsRaw), "Gzipped (lvl 9)": formatBytes(coreHlsGzip) },
+  { State: "7. DASH Active (Core + dash.js MSE)", "Raw (ESM)": formatBytes(coreDashRaw), "Gzipped (lvl 9)": formatBytes(coreDashGzip) },
+  { State: "8. DRM Active (Built-in Modular EME)", "Raw (ESM)": formatBytes(drmActiveRaw), "Gzipped (lvl 9)": formatBytes(drmActiveGzip) },
 ]);
 
-console.log("\n[2/3] Running Instantiation & Teardown Micro-benchmarks (500 iterations)...");
+const isSmoke = process.argv.includes("--smoke");
+const ITERATIONS = isSmoke ? 15 : 500;
+const WARMUP_ITERATIONS = isSmoke ? 3 : 20;
 
-const ITERATIONS = 500;
+console.log(`\n[2/3] Running Instantiation & Teardown Micro-benchmarks (${ITERATIONS} iterations, ${WARMUP_ITERATIONS} warmup)...`);
+
 const container = dom.window.document.getElementById("player-container");
+
+// Warmup
+for (let i = 0; i < WARMUP_ITERATIONS; i++) {
+  const p1 = new Kyrspect(container, { controls: false });
+  p1.destroy();
+  const p2 = new Kyrspect(container, { controls: true });
+  p2.destroy();
+}
 
 // Benchmark 1: Headless Instantiation & Destroy
 const headlessInitTimes = [];
@@ -123,7 +164,7 @@ function calcStats(times) {
   const p95 = sorted[Math.floor(times.length * 0.95)];
   const min = sorted[0];
   const max = sorted[sorted.length - 1];
-  const opsSec = Math.round(1000 / mean);
+  const opsSec = Math.round(1000 / (mean || 1));
   return {
     "Mean (ms)": mean.toFixed(3),
     "Median (ms)": p50.toFixed(3),
@@ -153,7 +194,7 @@ const competitors = [
     vendor: "Kyrpi / Open Source",
     architecture: "Modular Micro-core + Adapters + Headless UI + Rust WASM",
     bundleGzip: `${formatBytes(combinedGzip)} (Core+UI)`,
-    hlsDash: "First-class adapters (hls.js / dashjs / Native)",
+    hlsDash: "HLS (Native / hls.js MSE) + DASH (dash.js MSE)",
     drm: "Widevine / FairPlay / PlayReady Modular EME",
     uiThemes: "8 Dynamic Built-in Themes + Runtime CSS Vars",
     perfMode: "Built-in Performance Mode (Zero animations/blurs)",
@@ -172,7 +213,7 @@ const competitors = [
     uiThemes: "CSS-only themes (Classic, Fantasy, Forest, City); static",
     perfMode: "None (requires manual CSS overrides)",
     statsForNerds: "None (requires custom 3rd party plugins)",
-    audioTools: "None (requires complex custom Web Audio wiring)",
+    audioTools: "None (requires custom Web Audio wiring)",
     reactNative: "Community wrappers (mostly unmaintained / manual lifecycle)",
     wasm: "None (pure JS legacy engine)",
   },
@@ -181,7 +222,7 @@ const competitors = [
     vendor: "Google",
     architecture: "Streaming Engine with basic optional UI overlay",
     bundleGzip: "~140 KB - 180 KB (with UI library)",
-    hlsDash: "Industry-leading native DASH & HLS parser with robust ABR",
+    hlsDash: "DASH (MSE) & HLS parser with robust ABR",
     drm: "Extensive enterprise EME integration (Widevine, PlayReady, FairPlay)",
     uiThemes: "Basic utilitarian styling; custom CSS variables",
     perfMode: "None",
@@ -195,7 +236,7 @@ const competitors = [
     vendor: "Sam Potts / Community",
     architecture: "Monolithic DOM wrapper around standard HTML5 media",
     bundleGzip: "~40 KB (JS + CSS, but NO HLS/DASH streaming engine)",
-    hlsDash: "No native HLS/DASH engine (requires manual hls.js setup by dev)",
+    hlsDash: "No built-in HLS/DASH engine (requires manual hls.js setup by dev)",
     drm: "None (relies strictly on browser native support)",
     uiThemes: "Single sleek look with limited CSS variable color tweaks",
     perfMode: "None",
@@ -225,37 +266,37 @@ const uiInitStats = calcStats(uiInitTimes);
 const uiDestroyStats = calcStats(uiDestroyTimes);
 
 // 5. Generate Markdown Documentation
-const trDoc = `# Kyrspect vs En Güçlü 3 Alternatif: Özellik Kıyaslaması ve Benchmark Raporu
+const trDoc = `# Kyrspect ve Alternatif Video Oynatıcıları: Özellik Karşılaştırması ve Benchmark Raporu
 
-Bu doküman, **Kyrspect** video oynatıcısının web video ekosistemindeki **en güçlü 3 alternatifi** ile kapsamlı teknik kıyaslamasını, mimari farklarını, özellik matrisini ve nesnel performans (benchmark) test sonuçlarını içermektedir.
+Bu doküman, **Kyrspect** video oynatıcısının web video ekosistemindeki öne çıkan açık kaynak oynatıcılar ile teknik karşılaştırmasını, mimari farklarını, özellik matrisini ve nesnel performans (benchmark) test sonuçlarını içermektedir.
 
 ---
 
-## 1. Tespit Edilen En Güçlü 3 Alternatif
+## 1. Değerlendirilen Alternatifler
 
-Web video oynatıcı pazarında açık kaynak ve endüstri standardı olarak öne çıkan en güçlü 3 oyuncu tespit edilmiştir:
+Web video ekosisteminde farklı kullanım senaryolarına hizmet eden açık kaynak çözümler:
 
-1. **Video.js (Brightcove / Açık Kaynak Topluluk)**:
-   - **Konum:** Web video tarihinin en köklü, en yaygın kullanılan ve en geniş eklenti kütüphanesine sahip amiral gemisi oynatıcısı (~37.500+ GitHub Stars, milyonlarca haftalık npm indirmesi).
-   - **Karakter:** Eklenti zengini, geniş uyumluluk sağlayan ancak 2010'lu yılların monolitik bileşen hiyerarşisine dayanan ağır bir yapı.
+1. **Video.js (Brightcove / Topluluk)**:
+   - **Kapsam:** Geniş eklenti ekosistemi, VHS ile HLS/DASH streaming desteği, yerleşik ve olgun mimari.
+   - **Mimari:** Monolitik bileşen hiyerarşisi, daha yüksek bundle boyutu.
 2. **Shaka Player (Google)**:
-   - **Konum:** Google ve YouTube Media ekibi tarafından geliştirilen, kurumsal yayın ve streaming (DASH / HLS / DRM) standardı (~7.200+ GitHub Stars).
-   - **Karakter:** Kusursuz ABR (Adaptive Bitrate) algoritması, üst düzey DRM yeteneği, çevrimdışı önbellekleme; ancak işlevsel ve ham bir kullanıcı arayüzü.
+   - **Kapsam:** Kurumsal streaming (DASH / HLS / DRM) ve ABR algoritmalarında endüstri referansı.
+   - **Mimari:** Güçlü streaming motoru, temel UI katmanı, saf JS ayrıştırıcı.
 3. **Plyr (Sam Potts)**:
-   - **Konum:** Web tasarımcıları ve sade web siteleri arasında modern, temiz ve minimal tasarımıyla en sevilen hafif oynatıcı (~25.000+ GitHub Stars).
-   - **Karakter:** Hafif ve görsel olarak şık; ancak dahili streaming (HLS/DASH) motoru içermeyen, gelişmiş ses/görüntü kontrolleri bulunmayan temel bir HTML5 medya kabuğu.
+   - **Kapsam:** Hafif, minimal ve temiz HTML5 video/audio sarmalayıcısı.
+   - **Mimari:** Dahili HLS/DASH streaming motoru içermez; harici entegrasyon gerektirir.
 
 ---
 
-## 2. Özellik Kıyaslama Matrisi (Feature Comparison)
+## 2. Özellik Karşılaştırma Matrisi
 
 | Özellik / Kriter | Kyrspect | Video.js (v8.x) | Shaka Player (v4.x) | Plyr (v3.x) |
 |---|---|---|---|---|
-| **Temel Mimari** | Modüler Mikro-Çekirdek + Headless UI + Rust WASM | Monolitik Bileşen Ağacı (Eski OOP) | Streaming Motoru + Temel UI Overlay | Temel HTML5 Video Sarmalayıcı |
+| **Temel Mimari** | Modüler Mikro-Çekirdek + Headless UI + Rust WASM | Monolitik Bileşen Ağacı | Streaming Motoru + Temel UI Overlay | Temel HTML5 Video Sarmalayıcı |
 | **Paket Boyutu (Gzip)** | **~57.5 KB** (Çekirdek + Tam UI) | ~180 - 220 KB (VHS Streaming ile) | ~140 - 180 KB (UI Kütüphanesi ile) | **~40 KB** (Sadece UI, Streaming Yok) |
 | **Çekirdek (Core) Boyutu** | **${formatBytes(coreMetrics.gzip)}** (Headless Çekirdek) | ~130 KB | ~110 KB | N/A (Ayrılamaz) |
-| **HLS Desteği** | ✅ Yerel + hls.js Adaptörü | ✅ VHS (Video.js HTTP Streaming) | ✅ Dahili HLS Ayrıştırıcı | ⚠️ Harici hls.js kodu gerekir |
-| **DASH Desteği** | ✅ Yerel + dash.js Adaptörü | ⚠️ Eklenti gerekir | ✅ Endüstri lideri DASH ABR | ⚠️ Harici dash.js kodu gerekir |
+| **HLS Desteği** | ✅ Native HLS + hls.js / MSE Adaptörü | ✅ VHS (Video.js HTTP Streaming) | ✅ Dahili HLS Ayrıştırıcı | ⚠️ Harici hls.js kodu gerekir |
+| **DASH Desteği** | ✅ dash.js / MSE Adaptörü | ⚠️ Eklenti gerekir | ✅ DASH / MSE ABR motoru | ⚠️ Harici dash.js kodu gerekir |
 | **DRM (EME) Entegrasyonu** | ✅ Modüler (Widevine, FairPlay, PlayReady) | ⚠️ videojs-contrib-eme eklentisi | ✅ Üst Düzey Kurumsal Entegrasyon | ❌ Desteklenmez |
 | **WebAssembly Desteği** | ✅ Var (\`@kyrspect/wasm\` Rust motoru) | ❌ Yok (Saf JS) | ❌ Yok (Saf JS) | ❌ Yok (Saf JS) |
 | **Dinamik Çoklu Tema** | ✅ 8 Estetik Tema + CSS Değişkenleri | ⚠️ Statik CSS temaları | ⚠️ Sınırlı CSS değişkenleri | ⚠️ Tek tema + renk değişkeni |
@@ -272,7 +313,7 @@ Web video oynatıcı pazarında açık kaynak ve endüstri standardı olarak ön
 
 ## 3. Performans ve Benchmark Sonuçları
 
-Otomatik test süitimiz (\`npm run benchmark\`) tarafından **500 iterasyon** üzerinden toplanan gerçek ölçüm sonuçları:
+Otomatik test süitimiz (\`npm run benchmark\`) tarafından **${ITERATIONS} iterasyon** üzerinden toplanan gerçek ölçüm sonuçları:
 
 ### A. Paket Boyutları (Bundle Size Audit)
 
@@ -281,11 +322,11 @@ Otomatik test süitimiz (\`npm run benchmark\`) tarafından **500 iterasyon** ü
 | \`@kyrspect/core\` | ${formatBytes(coreMetrics.raw)} | **${formatBytes(coreMetrics.gzip)}** | Oynatma motoru, adaptörler, durum yönetimi, olay döngüsü |
 | \`@kyrspect/ui\` | ${formatBytes(uiMetrics.raw)} | **${formatBytes(uiMetrics.gzip)}** | Tam arayüz, 8 tema, tüm SVG ikonlar, istatistik paneli, ekolayzer, 6 dil |
 | \`@kyrspect/react\` | ${formatBytes(reactMetrics.raw)} | **${formatBytes(reactMetrics.gzip)}** | React sarmalayıcısı ve reaktif kancalar (hooks) |
-| **Kyrspect Tam Paket (Core + UI)** | **${formatBytes(combinedRaw)}** | **${formatBytes(combinedGzip)}** | **Video.js'in ~1/4'ü, Shaka Player'ın ~1/3'ü boyutunda!** |
+| **Kyrspect Tam Paket (Core + UI)** | **${formatBytes(combinedRaw)}** | **${formatBytes(combinedGzip)}** | **Core + UI modüler dağıtımı** |
 
 ### B. Başlatma ve İmha Gecikmeleri (Instantiation & Teardown Latency)
 
-*500 döngülük soğuk ve sıcak başlatma/yıkım ölçümleri:*
+*${ITERATIONS} döngülük ölçümler:*
 
 | Operasyon | Ortalama (Mean) | Medyan (p50) | %95 Dilim (p95) | En Hızlı (Min) | En Yavaş (Max) | İşlem Hacmi (Throughput) |
 |---|---|---|---|---|---|---|
@@ -296,53 +337,51 @@ Otomatik test süitimiz (\`npm run benchmark\`) tarafından **500 iterasyon** ü
 
 ### C. DOM ve Bellek Ayak İzi (Footprint)
 
-- **DOM Düğüm Sayısı:** Kyrspect tam UI'ı; dalga formu, istatistik paneli, ayarlar açılır menüleri ve zaman çizelgesi dahil toplamda **sadece ${nodeCount} DOM düğümü** üretir.
-- **Bellek Temizliği:** \`player.destroy()\` çağrıldığında tüm olay dinleyicileri, Web Audio düğümleri, zamanlayıcılar ve DOM ağacı sıfır sızıntı ile bellekten atılır.
+- **DOM Düğüm Sayısı:** Kyrspect tam UI'ı; dalga formu, istatistik paneli, ayarlar açılır menüleri ve zaman çizelgesi dahil toplamda **${nodeCount} DOM düğümü** üretir.
+- **Bellek Temizliği:** \`player.destroy()\` çağrıldığında tüm olay dinleyicileri, Web Audio düğümleri, zamanlayıcılar ve DOM ağacı temizlenir.
 
 ---
 
 ## 4. Detaylı Karşılaştırmalı Analiz
 
-### 1. Kyrspect vs Video.js
-- **Neden Video.js Tercih Edilir?** Yıllardır piyasada olan, yüzlerce hazır üçüncü parti eklentiye (örneğin Google IMA reklam entegrasyonu) ve çok geniş topluluk desteğine ihtiyaç duyulan projeler.
-- **Neden Kyrspect Daha Üstün?** Video.js'in paket boyutu (~200 KB gzip) Kyrspect'in yaklaşık 4 katıdır. Video.js, React veya modern SPA framework'leri ile çalışırken doğrudan DOM hiyerarşisi yüzünden çakışmalar üretir. Kyrspect modern cam tasarımı, canlı istatistik grafikleri, dahili ekolayzer ve ses görselleştiricisi, 8 teması ve süper hafif mimarisiyle açık ara öndedir.
+### 1. Kyrspect ve Video.js
+- **Video.js'in Güçlü Yönleri:** Yıllardır piyasada olan, geniş üçüncü parti eklenti havuzuna ve çok köklü topluluk desteğine sahip olması.
+- **Kyrspect'in Avantaj Sağladığı Alanlar:** Daha küçük bundle ayak izi, modern cam tasarım sistemi, canlı istatistik grafikleri, dahili ekolayzer ve ses görselleştiricisi, dahili çoklu tema sistemi ve modern SPA/React entegrasyonu için optimize edilmiş lifecycle yapısı.
 
-### 2. Kyrspect vs Shaka Player
-- **Neden Shaka Player Tercih Edilir?** Çok yüksek güvenlikli kurumsal DRM projeleri (Widevine Persistent Licenses), çevrimdışı şifreli video indirme gereksinimleri ve devasa video platformu ölçeğinde karmaşık ABR algoritmaları.
-- **Neden Kyrspect Daha Üstün?** Shaka Player'ın arayüzü oldukça hamdır ve modern bir streaming platformu hissi vermez; projelerde sıfırdan UI inşa etmek gerekir. Kyrspect ise hem HLS/DASH adaptörleriyle yüksek performanslı yayın sunar hem de kutudan çıktığı anda büyüleyici bir UI deneyimi, düşük donanımlı cihazlar için performans modu ve React entegrasyonu sağlar.
+### 2. Kyrspect ve Shaka Player
+- **Shaka Player'ın Güçlü Yönleri:** Çevrimdışı şifreli video önbellekleme ve devasa video servislerinde test edilmiş kurumsal ABR algoritmaları.
+- **Kyrspect'in Avantaj Sağladığı Alanlar:** Kutudan çıktığı anda modern hazır UI deneyimi, düşük donanımlı cihazlar için dahili performans modu, resmi React bileşen paketi ve Web Audio ses araçları.
 
-### 3. Kyrspect vs Plyr
-- **Neden Plyr Tercih Edilir?** Yalnızca MP4/WebM veya YouTube/Vimeo iframe'i oynatılacak, hiçbir uyarlanabilir streaming (HLS/DASH) gerektirmeyen çok basit blog ya da açılış sayfaları.
-- **Neden Kyrspect Daha Üstün?** Plyr'da dahili HLS/DASH streaming motoru yoktur; geliştirici bunu manuel kurmak zorundadır. Ayrıca Plyr gelişmiş istatistikler, ses dalgası, ekolayzer, performans modu ve dinamik çoklu tema sisteminden yoksundur. Kyrspect ise neredeyse aynı hafiflikte tam donanımlı profesyonel bir streaming oynatıcısı sunar.
+### 3. Kyrspect ve Plyr
+- **Plyr'ın Güçlü Yönleri:** Yalnızca temel HTML5 MP4/WebM veya üçüncü parti iframe oynatılacak basit projeler için çok hafif bir kabuk sunması.
+- **Kyrspect'in Avantaj Sağladığı Alanlar:** Dahili HLS ve DASH adaptörleri, ABR kalite yönetimi, DRM desteği, detaylı istatistikler ve ekolayzer özellikleri sunması.
 
 ---
 
 ## 5. Benchmark Komutunu Çalıştırma
-
-Bu testleri yerel ortamınızda dilediğiniz an tekrarlamak için:
 
 \`\`\`bash
 npm run benchmark
 \`\`\`
 `;
 
-const enDoc = `# Kyrspect vs Top 3 Alternatives: Feature Comparison & Benchmark Audit
+const enDoc = `# Kyrspect and Alternative Video Players: Feature Comparison & Benchmark Audit
 
-This document provides an in-depth technical comparison, architectural evaluation, feature matrix, and automated benchmark results comparing **Kyrspect** against the **top 3 video players** in the web ecosystem.
+This document provides a technical comparison, architectural evaluation, feature matrix, and automated benchmark results comparing **Kyrspect** with prominent open-source players in the web ecosystem.
 
 ---
 
-## 1. The Top 3 Alternatives Identified
+## 1. Evaluated Alternatives
 
 1. **Video.js (Brightcove / Community)**:
-   - **Positioning:** The most established and widely used web video player in history (~37.5k+ GitHub Stars, millions of weekly npm downloads).
-   - **Characteristics:** Monolithic 2010s component tree, huge plugin ecosystem, heavy bundle footprint.
+   - **Positioning:** Established web video player with a vast plugin ecosystem (~37.5k+ GitHub Stars).
+   - **Characteristics:** Monolithic component hierarchy, higher bundle footprint, VHS streaming engine.
 2. **Shaka Player (Google)**:
    - **Positioning:** Enterprise reference player for streaming (DASH / HLS) and DRM by Google (~7.2k+ GitHub Stars).
-   - **Characteristics:** Unrivaled ABR algorithms, industrial DRM, offline caching; utilitarian/barebones UI.
+   - **Characteristics:** Sophisticated ABR algorithms, industrial DRM, modular streaming engine with basic UI overlay.
 3. **Plyr (Sam Potts)**:
-   - **Positioning:** Minimalist, aesthetic HTML5 media player for lightweight websites (~25k+ GitHub Stars).
-   - **Characteristics:** Clean aesthetic out of the box; no built-in streaming engine (HLS/DASH requires manual wiring), minimal audio/diagnostics features.
+   - **Positioning:** Minimalist, clean HTML5 media player wrapper (~25k+ GitHub Stars).
+   - **Characteristics:** Clean aesthetic; no built-in streaming engine (requires external hls.js/dash.js setup).
 
 ---
 
@@ -350,11 +389,11 @@ This document provides an in-depth technical comparison, architectural evaluatio
 
 | Feature / Criteria | Kyrspect | Video.js (v8.x) | Shaka Player (v4.x) | Plyr (v3.x) |
 |---|---|---|---|---|
-| **Architecture** | Micro-Core + Headless UI + Rust WASM | Monolithic OOP Component Tree | Streaming Engine + Basic UI Overlay | HTML5 Media DOM Wrapper |
+| **Architecture** | Micro-Core + Headless UI + Rust WASM | Monolithic Component Tree | Streaming Engine + Basic UI Overlay | HTML5 Media DOM Wrapper |
 | **Bundle Size (Gzip)** | **~57.5 KB** (Core + Full UI) | ~180 - 220 KB (with VHS Streaming) | ~140 - 180 KB (with UI Library) | **~40 KB** (UI Only, No Streaming) |
 | **Core Size (Gzip)** | **${formatBytes(coreMetrics.gzip)}** (Headless Core) | ~130 KB | ~110 KB | N/A (Cannot be separated) |
-| **HLS Support** | ✅ Native + hls.js Adapter | ✅ VHS (Video.js HTTP Streaming) | ✅ Native HLS Parser | ⚠️ Dev must wire external hls.js |
-| **DASH Support** | ✅ Native + dash.js Adapter | ⚠️ Requires 3rd party plugin | ✅ Industry-standard DASH ABR | ⚠️ Dev must wire external dash.js |
+| **HLS Support** | ✅ Native HLS + hls.js / MSE Adapter | ✅ VHS (Video.js HTTP Streaming) | ✅ Native HLS Parser | ⚠️ Dev must wire external hls.js |
+| **DASH Support** | ✅ dash.js / MSE Adapter | ⚠️ Requires 3rd party plugin | ✅ DASH / MSE Engine | ⚠️ Dev must wire external dash.js |
 | **DRM (EME)** | ✅ Modular (Widevine, FairPlay, PlayReady) | ⚠️ videojs-contrib-eme plugin | ✅ Enterprise Tier EME | ❌ None |
 | **WebAssembly Engine** | ✅ Yes (\`@kyrspect/wasm\` Rust engine) | ❌ None (Pure JS) | ❌ None (Pure JS) | ❌ None (Pure JS) |
 | **Multi-Theme System** | ✅ 8 Aesthetic Themes + CSS Variables | ⚠️ Static CSS themes | ⚠️ Limited CSS variables | ⚠️ Single theme + color var |
@@ -371,13 +410,13 @@ This document provides an in-depth technical comparison, architectural evaluatio
 
 ## 3. Automated Benchmark Results
 
-Conducted across **500 iterations** via \`npm run benchmark\`:
+Conducted across **${ITERATIONS} iterations** via \`npm run benchmark\`:
 
 ### Bundle Sizes
 - \`@kyrspect/core\`: ${formatBytes(coreMetrics.raw)} raw (**${formatBytes(coreMetrics.gzip)} gzip**)
 - \`@kyrspect/ui\`: ${formatBytes(uiMetrics.raw)} raw (**${formatBytes(uiMetrics.gzip)} gzip**)
 - \`@kyrspect/react\`: ${formatBytes(reactMetrics.raw)} raw (**${formatBytes(reactMetrics.gzip)} gzip**)
-- **Kyrspect Complete (Core + UI)**: **${formatBytes(combinedGzip)} gzip** (~1/4 the size of Video.js with streaming).
+- **Kyrspect Complete (Core + UI)**: **${formatBytes(combinedGzip)} gzip**
 
 ### Instantiation & Teardown Latency
 - **Headless Core Init:** ${headlessInitStats["Mean (ms)"]} ms mean (${headlessInitStats["Throughput"]})
@@ -387,7 +426,14 @@ Conducted across **500 iterations** via \`npm run benchmark\`:
 
 ---
 
-## 4. How to Run the Benchmark
+## 4. Where Kyrspect Has Advantages
+- **Modular Footprint:** Keeps core playback lightweight without forcing heavy UI or audio assets.
+- **Built-in Presentation Tooling:** Zero-dependency multi-theming, Performance Mode, and Web Audio tools built with consistent lifecycle management.
+- **WASM Acceleration:** Optional Rust-based ABR and subtitle parser for CPU-constrained environments.
+
+---
+
+## 5. How to Run the Benchmark
 
 \`\`\`bash
 npm run benchmark

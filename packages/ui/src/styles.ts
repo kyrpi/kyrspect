@@ -237,7 +237,6 @@ export const PLAYER_CSS = `
   background: rgba(12, 12, 16, 0.74);
 }
 
-.kyrspect-big-play:focus,
 .kyrspect-big-play:focus-visible {
   outline: 2px solid #fff;
   outline-offset: 3px;
@@ -478,10 +477,33 @@ export const PLAYER_CSS = `
   background: rgba(255, 255, 255, 0.12);
 }
 
-.kyrspect-btn:focus,
 .kyrspect-btn:focus-visible {
   outline: 2px solid #fff;
   outline-offset: 0;
+}
+
+.kyrspect-player button:focus:not(:focus-visible),
+.kyrspect-player button:active,
+.kyrspect-player [role="button"]:focus:not(:focus-visible),
+.kyrspect-player [role="button"]:active,
+.kyrspect-player [role="menuitem"]:focus:not(:focus-visible),
+.kyrspect-player [role="menuitem"]:active,
+.kyrspect-btn:focus:not(:focus-visible),
+.kyrspect-btn:active,
+.kyrspect-big-play:focus:not(:focus-visible),
+.kyrspect-big-play:active,
+.kyrspect-menu-item:focus:not(:focus-visible),
+.kyrspect-menu-item:active,
+.kyrspect-menu-back:focus:not(:focus-visible),
+.kyrspect-menu-back:active,
+.kyrspect-context-item:focus:not(:focus-visible),
+.kyrspect-context-item:active,
+.kyrspect-rate-btn:focus:not(:focus-visible),
+.kyrspect-rate-btn:active,
+.kyrspect-rate-chip:focus:not(:focus-visible),
+.kyrspect-rate-chip:active {
+  outline: none !important;
+  box-shadow: none;
 }
 
 .kyrspect-menu-item:focus-visible,
@@ -954,7 +976,6 @@ export const PLAYER_CSS = `
   transform: scale(0.92);
 }
 
-.kyrspect-rate-btn:focus,
 .kyrspect-rate-btn:focus-visible {
   outline: 2px solid #fff;
   transform: none !important;
@@ -1492,8 +1513,13 @@ export const PLAYER_CSS = `
   transition-delay: 0s !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
+  filter: none !important;
   box-shadow: none !important;
   text-shadow: none !important;
+}
+
+.kyrspect-player.kyrspect-performance-mode .kyrspect-waveform {
+  display: none !important;
 }
 
 .kyrspect-player.kyrspect-performance-mode .kyrspect-menu {

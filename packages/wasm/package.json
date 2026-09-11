@@ -24,7 +24,7 @@
     }
   },
   "scripts": {
-    "build:rust": "pwsh -Command \"cd rust-core; cargo build --target wasm32-unknown-unknown --release\"",
+    "build:rust": "cargo build --manifest-path rust-core/Cargo.toml --target wasm32-unknown-unknown --release",
     "bundle:wasm": "node scripts/bundle-wasm.mjs",
     "build:ts": "tsup",
     "build": "npm run build:rust && npm run bundle:wasm && npm run build:ts",

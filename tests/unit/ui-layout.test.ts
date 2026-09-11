@@ -232,4 +232,11 @@ describe("player layout invariants", () => {
     expect(PLAYER_CSS).toMatch(/@keyframes kyrspect-menu-in\s*\{[^}]*overflow:\s*hidden;/);
     expect(PLAYER_CSS).not.toMatch(/@keyframes kyrspect-menu-view-fade\s*\{[^}]*translateX/);
   });
+
+  it("removes outline on button click / active state while preserving keyboard focus-visible", () => {
+    expect(PLAYER_CSS).toContain(".kyrspect-player button:focus:not(:focus-visible)");
+    expect(PLAYER_CSS).toContain(".kyrspect-btn:active");
+    expect(PLAYER_CSS).toContain("outline: none !important;");
+    expect(PLAYER_CSS).toMatch(/\.kyrspect-btn:focus-visible\s*\{[^}]*outline:\s*2px solid #fff/);
+  });
 });

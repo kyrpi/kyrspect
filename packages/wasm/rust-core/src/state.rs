@@ -74,12 +74,7 @@ impl StateEngine {
         self.state.status = status;
     }
 
-    pub fn update_playback(
-        &mut self,
-        current_time: f64,
-        duration: f64,
-        buffered_end: f64,
-    ) {
+    pub fn update_playback(&mut self, current_time: f64, duration: f64, buffered_end: f64) {
         self.state.current_time = if current_time.is_finite() && current_time >= 0.0 {
             current_time
         } else {

@@ -159,6 +159,15 @@ export class DashPlaybackAdapter implements PlaybackAdapter {
           IndexSegment: attempts,
           other: attempts,
         },
+        retryIntervals: {
+          MPD: 1000,
+          MediaSegment: 1000,
+          InitializationSegment: 1000,
+          BitstreamSwitchingSegment: 1000,
+          IndexSegment: 1000,
+          other: 1000,
+        },
+        manifestUpdateRetryInterval: 1000,
       },
     });
 
@@ -192,16 +201,25 @@ export class DashPlaybackAdapter implements PlaybackAdapter {
     context: AdapterContext,
   ): Promise<void> {
     return new Promise((resolve, reject) => {
-      const events = this.dashEvents ?? {
-        STREAM_INITIALIZED: "streamInitialized",
-        ERROR: "error",
-        QUALITY_CHANGE_RENDERED: "qualityChangeRendered",
+      const events = (this.dashEvents ?? {}) as Record<string, string>;
+      const streamInitialized = events.STREAM_INITIALIZED ?? "streamInitialized";
+      const errorEvent = events.ERROR ?? "error";
+      const qualityRendered = events.QUALITY_CHANGE_RENDERED ?? "qualityChangeRendered";
+      const periodSwitch = events.PERIOD_SWITCH_COMPLETED ?? "periodSwitchCompleted";
+      const manifestUpdated = events.MANIFEST_LOADED ?? "manifestLoaded";
+      const trackChanged = events.TRACK_CHANGE_RENDERED ?? "trackChangeRendered";
+
+      const refreshQualities = () => {
+        const reps = listVideoRepresentations(player);
+        if (reps.length > 0) {
+          this.qualities = reps.map((rep, index) => mapRepresentation(rep, index));
+          context.debug("DASH", "Representations refreshed", `${this.qualities.length} levels`);
+          context.events.emit("qualitylevelsloaded", { qualities: this.qualities });
+        }
       };
 
       const onInitialized = () => {
-        this.qualities = listVideoRepresentations(player).map((rep, index) => mapRepresentation(rep, index));
-        context.debug("DASH", "Manifest loaded", `${this.qualities.length} levels`);
-        context.events.emit("qualitylevelsloaded", { qualities: this.qualities });
+        refreshQualities();
         if (typeof context.options.quality === "number") {
           this.setQuality(context.options.quality);
         } else if (context.options.dash?.startLevel != null && context.options.dash.startLevel !== "auto") {
@@ -210,6 +228,21 @@ export class DashPlaybackAdapter implements PlaybackAdapter {
         this.loadSettled = true;
         this.emitQualityChange(currentQualityIndex(player, this.qualities));
         resolve();
+      };
+
+      const onPeriodSwitchCompleted = () => {
+        context.debug("DASH", "Period switch completed");
+        refreshQualities();
+        this.emitQualityChange(currentQualityIndex(player, this.qualities));
+      };
+
+      const onManifestLoaded = () => {
+        refreshQualities();
+      };
+
+      const onTrackChanged = () => {
+        const currentAudio = this.getAudioTracks().find((t) => t.default) ?? null;
+        context.events.emit("audiotrackchange", { track: currentAudio });
       };
 
       const onError = (data: Record<string, unknown>) => {
@@ -231,16 +264,22 @@ export class DashPlaybackAdapter implements PlaybackAdapter {
         this.handleError({ ...data, category: "DRM_ERROR", fatal: true }, reject);
       };
 
-      player.on(events.STREAM_INITIALIZED, onInitialized);
-      player.on(events.ERROR, onError);
-      player.on(events.QUALITY_CHANGE_RENDERED, onQuality);
+      player.on(streamInitialized, onInitialized);
+      player.on(errorEvent, onError);
+      player.on(qualityRendered, onQuality);
+      player.on(periodSwitch, onPeriodSwitchCompleted);
+      player.on(manifestUpdated, onManifestLoaded);
+      player.on(trackChanged, onTrackChanged);
       if (events.METRIC_ADDED) player.on(events.METRIC_ADDED, onMetric);
       if (events.KEY_ERROR) player.on(events.KEY_ERROR, onKeyError);
 
       this.unsubs.push(() => {
-        player.off(events.STREAM_INITIALIZED, onInitialized);
-        player.off(events.ERROR, onError);
-        player.off(events.QUALITY_CHANGE_RENDERED, onQuality);
+        player.off(streamInitialized, onInitialized);
+        player.off(errorEvent, onError);
+        player.off(qualityRendered, onQuality);
+        player.off(periodSwitch, onPeriodSwitchCompleted);
+        player.off(manifestUpdated, onManifestLoaded);
+        player.off(trackChanged, onTrackChanged);
         if (events.METRIC_ADDED) player.off(events.METRIC_ADDED, onMetric);
         if (events.KEY_ERROR) player.off(events.KEY_ERROR, onKeyError);
       });

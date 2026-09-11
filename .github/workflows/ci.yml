@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  validate:
+    name: Build, Test & Validate (Node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: "npm"
+
+      - name: Setup Rust & WASM Target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+          components: rustfmt, clippy
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Rust Linting (fmt & clippy)
+        run: npm run lint
+
+      - name: Rust Tests
+        run: npm run rust:test
+
+      - name: Typecheck Workspace
+        run: npm run typecheck
+
+      - name: Unit & Integration Tests
+        run: npm test
+
+      - name: Production Build (Including WASM)
+        run: npm run build
+
+      - name: Benchmark Smoke Test
+        run: node scripts/benchmark.mjs --smoke
+
+  browser-tests:
+    name: Playwright Matrix Tests (Chromium, Firefox, WebKit)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: "npm"
+
+      - name: Setup Rust & WASM Target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build Workspace
+        run: npm run build
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps chromium firefox webkit
+
+      - name: Run Playwright Tests
+        run: npm test
