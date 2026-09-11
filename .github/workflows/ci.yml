@@ -43,7 +43,7 @@ jobs:
         run: npm run typecheck
 
       - name: Unit & Integration Tests
-        run: npm test
+        run: npm run test:unit
 
       - name: Production Build (Including WASM)
         run: npm run build
@@ -79,4 +79,4 @@ jobs:
         run: npx playwright install --with-deps chromium firefox webkit
 
       - name: Run Playwright Tests
-        run: npm test
+        run: npm run test:browser

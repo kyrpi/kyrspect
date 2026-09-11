@@ -25,8 +25,8 @@ Web video ekosisteminde farklı kullanım senaryolarına hizmet eden açık kayn
 | Özellik / Kriter | Kyrspect | Video.js (v8.x) | Shaka Player (v4.x) | Plyr (v3.x) |
 |---|---|---|---|---|
 | **Temel Mimari** | Modüler Mikro-Çekirdek + Headless UI + Rust WASM | Monolitik Bileşen Ağacı | Streaming Motoru + Temel UI Overlay | Temel HTML5 Video Sarmalayıcı |
-| **Paket Boyutu (Gzip)** | **~57.5 KB** (Çekirdek + Tam UI) | ~180 - 220 KB (VHS Streaming ile) | ~140 - 180 KB (UI Kütüphanesi ile) | **~40 KB** (Sadece UI, Streaming Yok) |
-| **Çekirdek (Core) Boyutu** | **26.1 KB** (Headless Çekirdek) | ~130 KB | ~110 KB | N/A (Ayrılamaz) |
+| **Paket Boyutu (Gzip)** | **~54 KB** (Çekirdek + Tam UI) | ~180 - 220 KB (VHS Streaming ile) | ~140 - 180 KB (UI Kütüphanesi ile) | **~40 KB** (Sadece UI, Streaming Yok) |
+| **Çekirdek (Core) Boyutu** | **26.2 KB** (Headless Çekirdek) | ~130 KB | ~110 KB | N/A (Ayrılamaz) |
 | **HLS Desteği** | ✅ Native HLS + hls.js / MSE Adaptörü | ✅ VHS (Video.js HTTP Streaming) | ✅ Dahili HLS Ayrıştırıcı | ⚠️ Harici hls.js kodu gerekir |
 | **DASH Desteği** | ✅ dash.js / MSE Adaptörü | ⚠️ Eklenti gerekir | ✅ DASH / MSE ABR motoru | ⚠️ Harici dash.js kodu gerekir |
 | **DRM (EME) Entegrasyonu** | ✅ Modüler (Widevine, FairPlay, PlayReady) | ⚠️ videojs-contrib-eme eklentisi | ✅ Üst Düzey Kurumsal Entegrasyon | ❌ Desteklenmez |
@@ -51,10 +51,10 @@ Otomatik test süitimiz (`npm run benchmark`) tarafından **500 iterasyon** üze
 
 | Paket | Ham Boyut (ESM) | Gzip (Seviye 9) | Açıklama |
 |---|---|---|---|
-| `@kyrspect/core` | 117.8 KB | **26.1 KB** | Oynatma motoru, adaptörler, durum yönetimi, olay döngüsü |
-| `@kyrspect/ui` | 121.9 KB | **28 KB** | Tam arayüz, 8 tema, tüm SVG ikonlar, istatistik paneli, ekolayzer, 6 dil |
+| `@kyrspect/core` | 118.1 KB | **26.2 KB** | Oynatma motoru, adaptörler, durum yönetimi, olay döngüsü |
+| `@kyrspect/ui` | 122.4 KB | **28.1 KB** | Tam arayüz, 8 tema, tüm SVG ikonlar, istatistik paneli, ekolayzer, 6 dil |
 | `@kyrspect/react` | 5.9 KB | **1.7 KB** | React sarmalayıcısı ve reaktif kancalar (hooks) |
-| **Kyrspect Tam Paket (Core + UI)** | **239.7 KB** | **53.8 KB** | **Core + UI modüler dağıtımı** |
+| **Kyrspect Tam Paket (Core + UI)** | **240.5 KB** | **54 KB** | **Core + UI modüler dağıtımı** |
 
 ### B. Başlatma ve İmha Gecikmeleri (Instantiation & Teardown Latency)
 
@@ -62,10 +62,10 @@ Otomatik test süitimiz (`npm run benchmark`) tarafından **500 iterasyon** üze
 
 | Operasyon | Ortalama (Mean) | Medyan (p50) | %95 Dilim (p95) | En Hızlı (Min) | En Yavaş (Max) | İşlem Hacmi (Throughput) |
 |---|---|---|---|---|---|---|
-| **Headless Çekirdek Başlatma** | 0.265 ms | 0.234 ms | 0.358 ms | 0.201 ms | 2.234 ms | **3.778 ops/sec** |
-| **Headless Çekirdek İmha (Destroy)** | 0.053 ms | 0.048 ms | 0.086 ms | 0.037 ms | 0.189 ms | **18.838 ops/sec** |
-| **Tam UI Başlatma (DOM + Ses + Temalar)** | 2.562 ms | 2.270 ms | 4.470 ms | 1.772 ms | 10.401 ms | **390 ops/sec** |
-| **Tam UI İmha (Temizlik)** | 0.174 ms | 0.145 ms | 0.216 ms | 0.121 ms | 5.365 ms | **5.748 ops/sec** |
+| **Headless Çekirdek Başlatma** | 0.247 ms | 0.222 ms | 0.316 ms | 0.198 ms | 1.931 ms | **4.048 ops/sec** |
+| **Headless Çekirdek İmha (Destroy)** | 0.054 ms | 0.046 ms | 0.076 ms | 0.037 ms | 1.532 ms | **18.466 ops/sec** |
+| **Tam UI Başlatma (DOM + Ses + Temalar)** | 2.486 ms | 2.132 ms | 4.367 ms | 1.750 ms | 9.865 ms | **402 ops/sec** |
+| **Tam UI İmha (Temizlik)** | 0.161 ms | 0.137 ms | 0.200 ms | 0.121 ms | 2.615 ms | **6.202 ops/sec** |
 
 ### C. DOM ve Bellek Ayak İzi (Footprint)
 

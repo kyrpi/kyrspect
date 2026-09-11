@@ -34,7 +34,7 @@
     "react-dom": ">=18.0.0"
   },
   "dependencies": {
-    "@kyrspect/core": "0.1.0"
+    "@kyrspect/core": "^0.1.0"
   },
   "devDependencies": {
     "@types/react": "^18.3.18",

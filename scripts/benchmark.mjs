@@ -91,7 +91,10 @@ console.log("===================================================================
 console.log("               KYRSPECT BENCHMARK SUITE & PERFORMANCE AUDIT                     ");
 console.log("================================================================================\n");
 
-console.log("[1/3] Measuring Bundle Sizes (8 Architectural States)...\n");
+const statsMetrics = getBundleMetrics(path.resolve("packages/ui/dist/stats.js"));
+const waveformMetrics = getBundleMetrics(path.resolve("packages/ui/dist/waveform.js"));
+
+console.log("[1/3] Measuring Bundle Sizes (Architectural Packages & Feature Modules)...\n");
 console.table([
   { State: "1. Core Engine (@kyrspect/core)", "Raw (ESM)": formatBytes(coreMetrics.raw), "Gzipped (lvl 9)": formatBytes(coreMetrics.gzip) },
   { State: "2. UI Package (@kyrspect/ui)", "Raw (ESM)": formatBytes(uiMetrics.raw), "Gzipped (lvl 9)": formatBytes(uiMetrics.gzip) },
@@ -101,6 +104,8 @@ console.table([
   { State: "6. HLS Active (Core + hls.js MSE)", "Raw (ESM)": formatBytes(coreHlsRaw), "Gzipped (lvl 9)": formatBytes(coreHlsGzip) },
   { State: "7. DASH Active (Core + dash.js MSE)", "Raw (ESM)": formatBytes(coreDashRaw), "Gzipped (lvl 9)": formatBytes(coreDashGzip) },
   { State: "8. DRM Active (Built-in Modular EME)", "Raw (ESM)": formatBytes(drmActiveRaw), "Gzipped (lvl 9)": formatBytes(drmActiveGzip) },
+  { State: "9. Stats Module (@kyrspect/ui/stats)", "Raw (ESM)": formatBytes(statsMetrics.raw), "Gzipped (lvl 9)": formatBytes(statsMetrics.gzip) },
+  { State: "10. Waveform Module (@kyrspect/ui/waveform)", "Raw (ESM)": formatBytes(waveformMetrics.raw), "Gzipped (lvl 9)": formatBytes(waveformMetrics.gzip) },
 ]);
 
 const isSmoke = process.argv.includes("--smoke");
@@ -184,6 +189,18 @@ console.table({
 });
 
 console.log(`DOM Footprint: Full player UI renders exactly ${nodeCount} DOM nodes inside container.`);
+
+console.log("\nPlayback Performance Metrics Infrastructure (Profile Standard):");
+console.table([
+  { Metric: "Time to First Frame (TTFF)", Status: "TODO (Requires real browser hardware decode context / Playwright profile)", Target: "< 250 ms" },
+  { Metric: "Manifest → Playable Latency", Status: "TODO (Instrumented via manifestParsed → canplay event interval)", Target: "< 350 ms" },
+  { Metric: "Seek Recovery Latency", Status: "TODO (Instrumented via seeking → seeked event interval)", Target: "< 150 ms" },
+  { Metric: "Quality Switch Latency", Status: "TODO (Instrumented via qualitychange → rendition rendered)", Target: "< 500 ms" },
+  { Metric: "Rebuffer Duration", Status: "TODO (Instrumented via waiting → playing interval)", Target: "0 ms under normal QoS" },
+  { Metric: "Live Latency", Status: "Instrumented via player.liveLatency / getLiveLatency()", Target: "2 - 6 s (Low-Latency DASH/HLS)" },
+  { Metric: "Destroy Teardown Time", Status: `Measured: ${calcStats(uiDestroyTimes)["Mean (ms)"]} ms mean`, Target: "< 5 ms" },
+  { Metric: "Memory Growth (100x cycles)", Status: "0 leaked DOM nodes (verified via memory-leak test)", Target: "0 leaked nodes / 0 listeners" },
+]);
 
 console.log("\n[3/3] Generating Detailed Comparison Report against Top 3 Alternatives...\n");
 
@@ -293,7 +310,7 @@ Web video ekosisteminde farklı kullanım senaryolarına hizmet eden açık kayn
 | Özellik / Kriter | Kyrspect | Video.js (v8.x) | Shaka Player (v4.x) | Plyr (v3.x) |
 |---|---|---|---|---|
 | **Temel Mimari** | Modüler Mikro-Çekirdek + Headless UI + Rust WASM | Monolitik Bileşen Ağacı | Streaming Motoru + Temel UI Overlay | Temel HTML5 Video Sarmalayıcı |
-| **Paket Boyutu (Gzip)** | **~57.5 KB** (Çekirdek + Tam UI) | ~180 - 220 KB (VHS Streaming ile) | ~140 - 180 KB (UI Kütüphanesi ile) | **~40 KB** (Sadece UI, Streaming Yok) |
+| **Paket Boyutu (Gzip)** | **~${formatBytes(combinedGzip)}** (Çekirdek + Tam UI) | ~180 - 220 KB (VHS Streaming ile) | ~140 - 180 KB (UI Kütüphanesi ile) | **~40 KB** (Sadece UI, Streaming Yok) |
 | **Çekirdek (Core) Boyutu** | **${formatBytes(coreMetrics.gzip)}** (Headless Çekirdek) | ~130 KB | ~110 KB | N/A (Ayrılamaz) |
 | **HLS Desteği** | ✅ Native HLS + hls.js / MSE Adaptörü | ✅ VHS (Video.js HTTP Streaming) | ✅ Dahili HLS Ayrıştırıcı | ⚠️ Harici hls.js kodu gerekir |
 | **DASH Desteği** | ✅ dash.js / MSE Adaptörü | ⚠️ Eklenti gerekir | ✅ DASH / MSE ABR motoru | ⚠️ Harici dash.js kodu gerekir |
@@ -390,7 +407,7 @@ This document provides a technical comparison, architectural evaluation, feature
 | Feature / Criteria | Kyrspect | Video.js (v8.x) | Shaka Player (v4.x) | Plyr (v3.x) |
 |---|---|---|---|---|
 | **Architecture** | Micro-Core + Headless UI + Rust WASM | Monolithic Component Tree | Streaming Engine + Basic UI Overlay | HTML5 Media DOM Wrapper |
-| **Bundle Size (Gzip)** | **~57.5 KB** (Core + Full UI) | ~180 - 220 KB (with VHS Streaming) | ~140 - 180 KB (with UI Library) | **~40 KB** (UI Only, No Streaming) |
+| **Bundle Size (Gzip)** | **~${formatBytes(combinedGzip)}** (Core + Full UI) | ~180 - 220 KB (with VHS Streaming) | ~140 - 180 KB (with UI Library) | **~40 KB** (UI Only, No Streaming) |
 | **Core Size (Gzip)** | **${formatBytes(coreMetrics.gzip)}** (Headless Core) | ~130 KB | ~110 KB | N/A (Cannot be separated) |
 | **HLS Support** | ✅ Native HLS + hls.js / MSE Adapter | ✅ VHS (Video.js HTTP Streaming) | ✅ Native HLS Parser | ⚠️ Dev must wire external hls.js |
 | **DASH Support** | ✅ dash.js / MSE Adapter | ⚠️ Requires 3rd party plugin | ✅ DASH / MSE Engine | ⚠️ Dev must wire external dash.js |

@@ -51,6 +51,8 @@ const player = new Kyrspect("#player", {
   },
 });
 
+Object.assign(window, { player, Kyrspect });
+
 const url = document.querySelector<HTMLInputElement>("#url")!;
 const form = document.querySelector<HTMLFormElement>("#loader")!;
 const accent = document.querySelector<HTMLInputElement>("#accent")!;

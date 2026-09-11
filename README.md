@@ -88,7 +88,7 @@ export default function VideoApp() {
 
 ## Key Features
 
-- **Format Support:** Progressive MP4/WebM, HLS (Native Safari + MSE), MPEG-DASH (MSE via dash.js), and MediaStreams.
+- **Format Support:** Progressive MP4/WebM, HLS (Native Safari or hls.js / MSE), MPEG-DASH (dash.js / MSE), and MediaStreams.
 - **Quality & ABR Management:** Auto adaptive bitrate with seamless manual quality override and hysteresis protection.
 - **Audio & Visual Enhancements:** 5-band equalizer presets, dual-channel audio matrix, and real-time audio waveform visualizer.
 - **Performance Mode:** Instant elimination of blurs, canvas drawing, backdrop filters, and animations for older and low-spec devices.
@@ -104,7 +104,7 @@ Kyrspect targets modern evergreen browsers via capability detection:
 - **Mozilla Firefox**
 - **Apple Safari** (iOS & macOS)
 
-Playback adapts dynamically to host platform capabilities (e.g. Native HLS on Safari, MSE fallback on Chromium/Firefox).
+Playback adapts dynamically to host platform capabilities (e.g. Native HLS on Safari or hls.js / MSE on Chromium and Firefox; DASH via dash.js / MSE).
 
 ---
 

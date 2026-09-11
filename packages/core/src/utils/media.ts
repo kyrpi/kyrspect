@@ -12,6 +12,14 @@ export function isSpuriousMediaError(video: HTMLVideoElement): boolean {
 
 export function resetMediaElement(video: HTMLVideoElement): void {
   video.pause();
+  const currentSrc = video.currentSrc || video.src;
+  if (currentSrc && currentSrc.startsWith("blob:") && typeof URL !== "undefined" && typeof URL.revokeObjectURL === "function") {
+    try {
+      URL.revokeObjectURL(currentSrc);
+    } catch {
+      // Ignored
+    }
+  }
   video.removeAttribute("src");
   video.srcObject = null;
   try {

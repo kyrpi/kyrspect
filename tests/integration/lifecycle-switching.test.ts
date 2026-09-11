@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { Kyrspect } from "@kyrspect/core";
 
+let hlsDestroyCount = 0;
+let dashResetCount = 0;
+
 // Setup mock adapters
 vi.mock("hls.js", () => {
   class FakeHls {
@@ -24,7 +27,9 @@ vi.mock("hls.js", () => {
     off() {}
     loadSource() {}
     attachMedia() {}
-    destroy() {}
+    destroy() {
+      hlsDestroyCount += 1;
+    }
   }
   return { default: FakeHls };
 });
@@ -75,6 +80,7 @@ vi.mock("dashjs", () => {
       return 100;
     }
     reset() {
+      dashResetCount += 1;
       this.listeners.clear();
     }
     destroy() {
@@ -110,13 +116,22 @@ describe("Critical Lifecycle & Source Switching Hardening", () => {
     await player.load("https://example.com/playlist.m3u8");
     expect(player.getState().status).toMatch(/ready|playing|loading|paused/);
 
-    // 3. Switch to DASH
+    const prevHlsDestroys = hlsDestroyCount;
+
+    // 3. Switch to DASH (must destroy previous HLS instance)
     await player.load("https://example.com/manifest.mpd");
     expect(player.getState().status).toMatch(/ready|playing|loading|paused/);
+    expect(hlsDestroyCount).toBeGreaterThan(prevHlsDestroys);
 
-    // 4. Switch back to MP4
+    const prevDashResets = dashResetCount;
+
+    // 4. Switch back to MP4 (must reset previous DASH instance)
     await player.load("https://example.com/fallback.mp4");
     expect(player.getState().status).toMatch(/ready|playing|loading|paused/);
+    expect(dashResetCount).toBeGreaterThan(prevDashResets);
+
+    // Progressive MP4 should not inherit streaming qualities
+    expect(player.getQualities()).toEqual([]);
 
     player.destroy();
   });

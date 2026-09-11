@@ -350,7 +350,9 @@ export function attachDefaultUI(player: PlayerLike, options: UIOptions = {}): Pl
     played.style.width = playedPct;
     knob.style.left = playedPct;
     buffered.style.width = `${Math.max(0, Math.min(1, bufferedRatio)) * 100}%`;
-    waveform.update(playedRatio, bufferedRatio);
+    if (audioVisualizerEnabled) {
+      waveform.update(playedRatio, bufferedRatio);
+    }
   };
 
   const updateFsPip = () => {

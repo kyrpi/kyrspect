@@ -23,8 +23,8 @@ This document provides a technical comparison, architectural evaluation, feature
 | Feature / Criteria | Kyrspect | Video.js (v8.x) | Shaka Player (v4.x) | Plyr (v3.x) |
 |---|---|---|---|---|
 | **Architecture** | Micro-Core + Headless UI + Rust WASM | Monolithic Component Tree | Streaming Engine + Basic UI Overlay | HTML5 Media DOM Wrapper |
-| **Bundle Size (Gzip)** | **~57.5 KB** (Core + Full UI) | ~180 - 220 KB (with VHS Streaming) | ~140 - 180 KB (with UI Library) | **~40 KB** (UI Only, No Streaming) |
-| **Core Size (Gzip)** | **26.1 KB** (Headless Core) | ~130 KB | ~110 KB | N/A (Cannot be separated) |
+| **Bundle Size (Gzip)** | **~54 KB** (Core + Full UI) | ~180 - 220 KB (with VHS Streaming) | ~140 - 180 KB (with UI Library) | **~40 KB** (UI Only, No Streaming) |
+| **Core Size (Gzip)** | **26.2 KB** (Headless Core) | ~130 KB | ~110 KB | N/A (Cannot be separated) |
 | **HLS Support** | ✅ Native HLS + hls.js / MSE Adapter | ✅ VHS (Video.js HTTP Streaming) | ✅ Native HLS Parser | ⚠️ Dev must wire external hls.js |
 | **DASH Support** | ✅ dash.js / MSE Adapter | ⚠️ Requires 3rd party plugin | ✅ DASH / MSE Engine | ⚠️ Dev must wire external dash.js |
 | **DRM (EME)** | ✅ Modular (Widevine, FairPlay, PlayReady) | ⚠️ videojs-contrib-eme plugin | ✅ Enterprise Tier EME | ❌ None |
@@ -46,15 +46,15 @@ This document provides a technical comparison, architectural evaluation, feature
 Conducted across **500 iterations** via `npm run benchmark`:
 
 ### Bundle Sizes
-- `@kyrspect/core`: 117.8 KB raw (**26.1 KB gzip**)
-- `@kyrspect/ui`: 121.9 KB raw (**28 KB gzip**)
+- `@kyrspect/core`: 118.1 KB raw (**26.2 KB gzip**)
+- `@kyrspect/ui`: 122.4 KB raw (**28.1 KB gzip**)
 - `@kyrspect/react`: 5.9 KB raw (**1.7 KB gzip**)
-- **Kyrspect Complete (Core + UI)**: **53.8 KB gzip**
+- **Kyrspect Complete (Core + UI)**: **54 KB gzip**
 
 ### Instantiation & Teardown Latency
-- **Headless Core Init:** 0.265 ms mean (3.778 ops/sec)
-- **Full UI Init:** 2.562 ms mean (390 ops/sec)
-- **Full UI Destroy:** 0.174 ms mean (5.748 ops/sec)
+- **Headless Core Init:** 0.247 ms mean (4.048 ops/sec)
+- **Full UI Init:** 2.486 ms mean (402 ops/sec)
+- **Full UI Destroy:** 0.161 ms mean (6.202 ops/sec)
 - **DOM Footprint:** Exactly 63 DOM nodes for the entire UI.
 
 ---

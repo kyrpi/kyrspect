@@ -516,6 +516,7 @@ export class Kyrspect {
     this.videoUnbind();
     this.playback.destroy();
     this.drm?.destroy();
+    this.drm = null;
     this.events.destroy();
     this.bound.cleanupDom();
   }
@@ -820,7 +821,10 @@ export class Kyrspect {
   }
 
   private ensureDrm(source?: SourceInput): DrmManager | null {
-    if (!needsDrmManager(source, this.optionsInternal)) return this.drm;
+    if (!needsDrmManager(source, this.optionsInternal)) {
+      this.drm?.detachNative();
+      return null;
+    }
     this.drm ??= new DrmManager();
     return this.drm;
   }
