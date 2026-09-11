@@ -33,6 +33,8 @@ export interface KyrspectHandle {
   setTheme(theme: ThemeInput): void;
   getTheme(): UITheme | null;
   getThemeName(): string;
+  setPerformanceMode(enabled: boolean): void;
+  isPerformanceMode(): boolean;
   enterFullscreen(): Promise<void>;
   exitFullscreen(): Promise<void>;
   getPlayer(): Kyrspect | null;
@@ -49,6 +51,7 @@ export interface KyrspectPlayerProps extends Omit<KyrspectOptions, "src"> {
   onTimeUpdate?: (currentTime: number) => void;
   onQualityChange?: (event: QualityChangeEvent) => void;
   onThemeChange?: (event: { theme: UITheme | null; name: string }) => void;
+  onPerformanceModeChange?: (enabled: boolean) => void;
   onError?: (error: KyrspectError) => void;
 }
 
@@ -64,6 +67,7 @@ export const KyrspectPlayer = forwardRef<KyrspectHandle, KyrspectPlayerProps>(fu
     onTimeUpdate,
     onQualityChange,
     onThemeChange,
+    onPerformanceModeChange,
     onError,
     ...options
   },
@@ -71,8 +75,8 @@ export const KyrspectPlayer = forwardRef<KyrspectHandle, KyrspectPlayerProps>(fu
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<Kyrspect | null>(null);
-  const callbacks = useRef({ onReady, onPlay, onPause, onEnded, onTimeUpdate, onQualityChange, onThemeChange, onError });
-  callbacks.current = { onReady, onPlay, onPause, onEnded, onTimeUpdate, onQualityChange, onThemeChange, onError };
+  const callbacks = useRef({ onReady, onPlay, onPause, onEnded, onTimeUpdate, onQualityChange, onThemeChange, onPerformanceModeChange, onError });
+  callbacks.current = { onReady, onPlay, onPause, onEnded, onTimeUpdate, onQualityChange, onThemeChange, onPerformanceModeChange, onError };
 
   const optionKey = useMemo(
     () =>
@@ -109,6 +113,7 @@ export const KyrspectPlayer = forwardRef<KyrspectHandle, KyrspectPlayerProps>(fu
       player.on("timeupdate", (event) => callbacks.current.onTimeUpdate?.(event.currentTime)),
       player.on("qualitychange", (event) => callbacks.current.onQualityChange?.(event)),
       player.on("themechange", (event) => callbacks.current.onThemeChange?.(event)),
+      player.on("performancemodechange", (event) => callbacks.current.onPerformanceModeChange?.(event.enabled)),
       player.on("error", (error) => callbacks.current.onError?.(error)),
     ];
 
@@ -150,6 +155,8 @@ export const KyrspectPlayer = forwardRef<KyrspectHandle, KyrspectPlayerProps>(fu
     setTheme: (theme) => playerRef.current?.setTheme(theme),
     getTheme: () => playerRef.current?.getTheme() ?? null,
     getThemeName: () => playerRef.current?.getThemeName() ?? "default",
+    setPerformanceMode: (enabled) => playerRef.current?.setPerformanceMode(enabled),
+    isPerformanceMode: () => playerRef.current?.isPerformanceMode() ?? false,
     enterFullscreen: () => playerRef.current?.enterFullscreen() ?? Promise.resolve(),
     exitFullscreen: () => playerRef.current?.exitFullscreen() ?? Promise.resolve(),
     getPlayer: () => playerRef.current,

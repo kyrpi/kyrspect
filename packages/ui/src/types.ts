@@ -79,6 +79,7 @@ export interface UIOptions {
   language?: string;
   labels?: Partial<UILabels>;
   theme?: ThemeInput;
+  performanceMode?: boolean;
   statsFields?: StatsField[];
   layout?: UILayout;
   aspectRatio?: UIAspectRatio;
@@ -179,6 +180,7 @@ export interface UILabels {
   themeLight: string;
   themeGlass: string;
   themeAmber: string;
+  performanceMode: string;
 }
 
 export type StatsFieldId =
@@ -296,6 +298,8 @@ export interface PlayerUIHandle {
   setTheme(theme: ThemeInput): void;
   getTheme(): UITheme | null;
   getThemeName(): string;
+  setPerformanceMode(enabled: boolean): void;
+  isPerformanceMode(): boolean;
   setLanguage(language: string, labels?: Partial<UILabels>): void;
   setStatsFields(fields: StatsField[]): void;
   setLayout(layout: UILayout): void;

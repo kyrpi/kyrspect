@@ -199,6 +199,20 @@ export class Kyrspect {
       this.optionsInternal.ui.theme = initialTheme;
     }
     applyTheme(this.el, initialTheme);
+
+    const initialPerformanceMode = Boolean(
+      this.optionsInternal.performanceMode ??
+      this.optionsInternal.ui?.performanceMode ??
+      (this.optionsInternal.preferences?.persist ? this.storage.read().performanceMode : false)
+    );
+    if (initialPerformanceMode) {
+      this.el.classList.add("kyrspect-performance-mode");
+      this.el.dataset.performanceMode = "true";
+      if (!this.optionsInternal.ui) this.optionsInternal.ui = {};
+      this.optionsInternal.ui.performanceMode = true;
+      this.optionsInternal.performanceMode = true;
+    }
+
     this.applyStatsConfig(this.optionsInternal.src ?? null);
 
     if (controlsEnabled) {
@@ -209,6 +223,7 @@ export class Kyrspect {
         language: this.optionsInternal.language ?? this.optionsInternal.ui?.language,
         labels: this.optionsInternal.ui?.labels,
         theme: initialTheme,
+        performanceMode: initialPerformanceMode,
         statsFields: this.statsFieldsInternal,
         layout: this.optionsInternal.ui?.layout,
         aspectRatio: this.optionsInternal.ui?.aspectRatio,
@@ -237,7 +252,7 @@ export class Kyrspect {
     const resolved = applyTheme(this.el, theme);
     this.ui?.setTheme(theme);
     const themeName = this.el.dataset.theme || (typeof theme === "string" ? theme : "default");
-    if (typeof theme === "string") {
+    if (typeof theme === "string" && this.optionsInternal.preferences?.persist) {
       this.storage.write({ theme });
     }
     this.events.emit("themechange", { theme: resolved, name: themeName });
@@ -249,6 +264,23 @@ export class Kyrspect {
 
   getThemeName(): string {
     return this.el.dataset.theme || this.ui?.getThemeName() || "default";
+  }
+
+  setPerformanceMode(enabled: boolean): void {
+    if (!this.optionsInternal.ui) this.optionsInternal.ui = {};
+    this.optionsInternal.ui.performanceMode = enabled;
+    this.optionsInternal.performanceMode = enabled;
+    this.el.classList.toggle("kyrspect-performance-mode", enabled);
+    this.el.dataset.performanceMode = String(enabled);
+    this.ui?.setPerformanceMode(enabled);
+    if (this.optionsInternal.preferences?.persist) {
+      this.storage.write({ performanceMode: enabled });
+    }
+    this.events.emit("performancemodechange", { enabled });
+  }
+
+  isPerformanceMode(): boolean {
+    return this.ui?.isPerformanceMode() ?? Boolean(this.optionsInternal.performanceMode);
   }
 
   setLanguage(language: string): void {

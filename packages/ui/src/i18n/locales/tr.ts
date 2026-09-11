@@ -92,4 +92,5 @@ export const tr: UILabels = {
   themeLight: "Aydınlık",
   themeGlass: "Buzlu Cam",
   themeAmber: "Kehribar",
+  performanceMode: "Performans Modu (Eski Cihaz)",
 };

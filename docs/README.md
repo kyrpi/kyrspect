@@ -14,6 +14,7 @@ Lütfen tercih ettiğiniz dili seçin / Please select your preferred language:
 - [Framework Integration (React, Next.js, Vue, Svelte, Angular, Vanilla)](./en/framework-integration.md)
 - [API Reference & Events](./en/api-reference.md)
 - [Architecture & WebAssembly Engine](./en/architecture.md)
+- [Alternatives Comparison & Benchmarks](./en/alternatives-and-benchmarks.md)
 
 ---
 
@@ -25,3 +26,4 @@ Lütfen tercih ettiğiniz dili seçin / Please select your preferred language:
 - [Framework Entegrasyonları (React, Next.js, Vue, Svelte, Angular, Düz JS)](./tr/framework-entegrasyonu.md)
 - [API Referansı & Olaylar](./tr/api-referansi.md)
 - [Mimari ve WebAssembly Çekirdeği](./tr/mimari.md)
+- [Alternatifler Kıyaslaması ve Benchmark Raporu](./tr/alternatifler-ve-benchmark.md)

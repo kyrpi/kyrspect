@@ -37,6 +37,7 @@ export interface KyrspectEventMap {
   fullscreenchange: { fullscreen: boolean };
   pictureinpicturechange: { active: boolean };
   themechange: { theme: UITheme | null; name: string };
+  performancemodechange: { enabled: boolean };
   liveedge: { atLiveEdge: boolean };
   latencychange: { liveLatency: number | null };
   autoplayblocked: undefined;

@@ -92,4 +92,5 @@ export const de: UILabels = {
   themeLight: "Hell",
   themeGlass: "Milchglas",
   themeAmber: "Bernstein",
+  performanceMode: "Leistungsmodus (Ältere Geräte)",
 };

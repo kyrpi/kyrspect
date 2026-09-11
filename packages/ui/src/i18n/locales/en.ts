@@ -92,4 +92,5 @@ export const en: UILabels = {
   themeLight: "Light",
   themeGlass: "Glass",
   themeAmber: "Amber",
+  performanceMode: "Performance Mode (Legacy Device)",
 };

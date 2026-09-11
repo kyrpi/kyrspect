@@ -10,6 +10,7 @@ export interface StoredPreferences {
   audioDualChannel?: boolean;
   audioEqualizer?: string;
   theme?: string;
+  performanceMode?: boolean;
 }
 
 export class StorageManager {

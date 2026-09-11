@@ -235,9 +235,9 @@ export const PLAYER_CSS = `
 
 .kyrspect-big-play:hover {
   background: rgba(12, 12, 16, 0.74);
-  transform: scale(1.04);
 }
 
+.kyrspect-big-play:focus,
 .kyrspect-big-play:focus-visible {
   outline: 2px solid #fff;
   outline-offset: 3px;
@@ -464,7 +464,7 @@ export const PLAYER_CSS = `
   border-radius: 10px;
   cursor: pointer;
   opacity: 0.94;
-  transition: transform 160ms var(--kyrspect-ease), background 160ms var(--kyrspect-ease), opacity 120ms linear;
+  transition: background 160ms var(--kyrspect-ease), opacity 120ms linear;
 }
 
 .kyrspect-btn svg {
@@ -475,11 +475,15 @@ export const PLAYER_CSS = `
 
 .kyrspect-btn:hover {
   opacity: 1;
-  background: rgba(255, 255, 255, 0.08);
-  transform: scale(1.05);
+  background: rgba(255, 255, 255, 0.12);
 }
 
-.kyrspect-btn:focus-visible,
+.kyrspect-btn:focus,
+.kyrspect-btn:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 0;
+}
+
 .kyrspect-menu-item:focus-visible,
 .kyrspect-volume-slider:focus-visible {
   outline: 2px solid #fff;
@@ -610,7 +614,11 @@ export const PLAYER_CSS = `
   bottom: 50px;
   min-width: 240px;
   max-height: min(340px, 72%);
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
   padding: 6px 0;
   border-radius: var(--kyrspect-radius, 14px);
   background: var(--kyrspect-surface, rgba(16, 16, 20, 0.88));
@@ -625,8 +633,51 @@ export const PLAYER_CSS = `
   pointer-events: auto;
 }
 
+.kyrspect-menu::-webkit-scrollbar {
+  width: 4px;
+}
+
+.kyrspect-menu::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.kyrspect-menu::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 4px;
+}
+
 .kyrspect-menu[data-open="true"] {
   display: block;
+  animation: kyrspect-menu-in 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes kyrspect-menu-in {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+    overflow: hidden;
+  }
+  99% {
+    overflow: hidden;
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    overflow-y: auto;
+  }
+}
+
+.kyrspect-menu[data-open="true"] > * {
+  animation: kyrspect-menu-view-fade 140ms ease-out;
+}
+
+@keyframes kyrspect-menu-view-fade {
+  from {
+    opacity: 0.3;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .kyrspect-menu-title,
@@ -901,6 +952,13 @@ export const PLAYER_CSS = `
 
 .kyrspect-rate-btn:active {
   transform: scale(0.92);
+}
+
+.kyrspect-rate-btn:focus,
+.kyrspect-rate-btn:focus-visible {
+  outline: 2px solid #fff;
+  transform: none !important;
+  transition: none !important;
 }
 
 .kyrspect-rate-range-wrap {
@@ -1345,6 +1403,11 @@ export const PLAYER_CSS = `
 
 .kyrspect-player.kyrspect-theme-light .kyrspect-menu {
   color: #111827;
+  scrollbar-color: rgba(0, 0, 0, 0.25) transparent;
+}
+
+.kyrspect-player.kyrspect-theme-light .kyrspect-menu::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.25);
 }
 
 .kyrspect-player.kyrspect-theme-light .kyrspect-menu-title,
@@ -1414,6 +1477,35 @@ export const PLAYER_CSS = `
 .kyrspect-player.kyrspect-theme-glass .kyrspect-controls {
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
+}
+
+/* Legacy Device / Performance Mode (Eski Cihaz / Performans Modu) */
+.kyrspect-player.kyrspect-performance-mode,
+.kyrspect-player.kyrspect-performance-mode *,
+.kyrspect-player.kyrspect-performance-mode *::before,
+.kyrspect-player.kyrspect-performance-mode *::after {
+  animation: none !important;
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition: none !important;
+  transition-duration: 0.001ms !important;
+  transition-delay: 0s !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+.kyrspect-player.kyrspect-performance-mode .kyrspect-menu {
+  background: rgba(20, 20, 24, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: none;
+}
+
+.kyrspect-player.kyrspect-performance-mode.kyrspect-theme-light .kyrspect-menu {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.16);
+  box-shadow: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

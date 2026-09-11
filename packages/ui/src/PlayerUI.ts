@@ -108,6 +108,24 @@ export function attachDefaultUI(player: PlayerLike, options: UIOptions = {}): Pl
     return (labels[key] as string) || fallback || themeId;
   };
 
+  let performanceMode = Boolean(options.performanceMode);
+  if (performanceMode) {
+    root.classList.add("kyrspect-performance-mode");
+    root.dataset.performanceMode = "true";
+  }
+
+  const applyPerformanceMode = (enabled: boolean, notifyPlayer = false) => {
+    performanceMode = enabled;
+    root.classList.toggle("kyrspect-performance-mode", enabled);
+    root.dataset.performanceMode = String(enabled);
+    if (notifyPlayer) {
+      const playerAny = player as unknown as { setPerformanceMode?: (enabled: boolean) => void };
+      if (typeof playerAny.setPerformanceMode === "function") {
+        playerAny.setPerformanceMode(enabled);
+      }
+    }
+  };
+
   player.media.classList.add("kyrspect-video");
   player.media.style.zIndex = "1";
 
@@ -600,6 +618,19 @@ export function attachDefaultUI(player: PlayerLike, options: UIOptions = {}): Pl
           },
         );
         addItem(
+          labels.performanceMode,
+          () => {
+            applyPerformanceMode(!performanceMode, true);
+            renderMenu();
+          },
+          {
+            toggle: true,
+            checked: performanceMode,
+            current: performanceMode ? labels.on : labels.off,
+            icon: icons.gauge,
+          },
+        );
+        addItem(
           labels.advancedSettings,
           () => {
             menuView = "advanced";
@@ -783,6 +814,19 @@ export function attachDefaultUI(player: PlayerLike, options: UIOptions = {}): Pl
       }
     } else if (menuView === "advanced") {
       addHeader(labels.advancedSettings, true);
+      addItem(
+        labels.performanceMode,
+        () => {
+          applyPerformanceMode(!performanceMode, true);
+          renderMenu();
+        },
+        {
+          toggle: true,
+          checked: performanceMode,
+          current: performanceMode ? labels.on : labels.off,
+          icon: icons.gauge,
+        },
+      );
       addItem(
         labels.subtitleSettings,
         () => {
@@ -1487,6 +1531,13 @@ export function attachDefaultUI(player: PlayerLike, options: UIOptions = {}): Pl
     },
     getThemeName() {
       return root.dataset.theme || "default";
+    },
+    setPerformanceMode(enabled: boolean) {
+      applyPerformanceMode(enabled, false);
+      if (menuOpen) renderMenu();
+    },
+    isPerformanceMode() {
+      return performanceMode;
     },
     setLanguage(next: string, overrides?: Partial<UILabels>) {
       applyLanguage(next, overrides);

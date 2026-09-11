@@ -92,4 +92,5 @@ export const pt: UILabels = {
   themeLight: "Claro",
   themeGlass: "Vidro Fosco",
   themeAmber: "Âmbar",
+  performanceMode: "Modo de desempenho (Dispositivos antigos)",
 };

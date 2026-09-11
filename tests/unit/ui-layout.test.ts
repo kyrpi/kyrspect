@@ -225,4 +225,11 @@ describe("player layout invariants", () => {
     player.destroy();
     root.remove();
   });
+
+  it("prevents vertical and horizontal scrollbar flashing during menu animations", () => {
+    expect(PLAYER_CSS).toMatch(/\.kyrspect-menu\s*\{[^}]*overflow-x:\s*hidden;/);
+    expect(PLAYER_CSS).toMatch(/\.kyrspect-menu\s*\{[^}]*overflow-y:\s*auto;/);
+    expect(PLAYER_CSS).toMatch(/@keyframes kyrspect-menu-in\s*\{[^}]*overflow:\s*hidden;/);
+    expect(PLAYER_CSS).not.toMatch(/@keyframes kyrspect-menu-view-fade\s*\{[^}]*translateX/);
+  });
 });

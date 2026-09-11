@@ -69,6 +69,7 @@ export interface UIPlayerOptions {
   language?: string;
   labels?: Partial<UILabels>;
   theme?: ThemeInput;
+  performanceMode?: boolean;
   layout?: UILayout;
   aspectRatio?: UIAspectRatio;
   fit?: UIFit;
@@ -97,6 +98,7 @@ export interface KyrspectOptions {
   drm?: DrmOptions;
   live?: LiveOptions;
   theme?: ThemeInput;
+  performanceMode?: boolean;
   ui?: UIPlayerOptions;
   language?: string;
   stats?: StatsOptions;
@@ -191,5 +193,6 @@ export const DEFAULT_OPTIONS: Required<
     hideDelay: 3000,
     showOnPause: true,
     audioVisualizer: false,
+    performanceMode: false,
   },
 };
