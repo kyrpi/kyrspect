@@ -9,6 +9,7 @@ export type {
   UIOptions,
   UIQuality,
   UITheme,
+  ThemeInput,
   StatsField,
   StatsFieldId,
   StatsCustomField,
@@ -16,7 +17,15 @@ export type {
 export { attachDefaultUI } from "./PlayerUI";
 export { createAudioWaveform, type AudioWaveformHandle, type WaveformOptions } from "./waveform";
 export { injectStyles, PLAYER_CSS } from "./styles";
-export { applyTheme } from "./theme";
+export {
+  applyTheme,
+  BUILTIN_THEMES,
+  registerTheme,
+  unregisterTheme,
+  getTheme,
+  getRegisteredThemes,
+  resolveTheme,
+} from "./theme";
 export { formatClock, formatLiveOffset } from "./format";
 export {
   DEFAULT_LABELS,

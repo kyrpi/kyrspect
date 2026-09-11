@@ -41,6 +41,13 @@ export {
   isSupportedLocale,
   resolveLabels,
   resolveLocale,
+  applyTheme,
+  BUILTIN_THEMES,
+  registerTheme,
+  unregisterTheme,
+  getTheme,
+  getRegisteredThemes,
+  resolveTheme,
 } from "@kyrspect/ui";
 
 export type {
@@ -84,7 +91,7 @@ export type {
   UITheme,
   UILabels,
 } from "./types";
-export type { UIAspectRatio, UIFit, UILayout } from "@kyrspect/ui";
+export type { UIAspectRatio, UIFit, UILayout, ThemeInput } from "@kyrspect/ui";
 export type { LocaleCode } from "@kyrspect/ui";
 
 export type { KyrspectErrorCategory } from "./errors/KyrspectError";

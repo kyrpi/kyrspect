@@ -43,18 +43,30 @@ export interface UIControlsConfig {
 }
 
 export interface UITheme {
+  name?: string;
+  label?: string;
   accent?: string;
   accentSoft?: string;
   background?: string;
+  surface?: string;
+  surfaceBorder?: string;
   text?: string;
   textMuted?: string;
   live?: string;
   track?: string;
   buffered?: string;
+  played?: string;
   controlSize?: string;
+  iconSize?: string;
   radius?: string;
   font?: string;
+  shadow?: string;
+  backdropBlur?: string;
+  className?: string;
+  customVars?: Record<string, string>;
 }
+
+export type ThemeInput = string | UITheme | null | undefined;
 
 export type UILayout = "standard" | "reels";
 export type UIFit = "contain" | "cover";
@@ -66,7 +78,7 @@ export interface UIOptions {
   showOnPause?: boolean;
   language?: string;
   labels?: Partial<UILabels>;
-  theme?: UITheme;
+  theme?: ThemeInput;
   statsFields?: StatsField[];
   layout?: UILayout;
   aspectRatio?: UIAspectRatio;
@@ -158,6 +170,15 @@ export interface UILabels {
   bgTransparent: string;
   bgDarkBlue: string;
   bgDarkGray: string;
+  theme: string;
+  themeDefault: string;
+  themeScarlet: string;
+  themeCinema: string;
+  themeEmerald: string;
+  themeCyberpunk: string;
+  themeLight: string;
+  themeGlass: string;
+  themeAmber: string;
 }
 
 export type StatsFieldId =
@@ -272,7 +293,9 @@ export interface PlayerUIHandle {
   destroy(): void;
   setLoading(visible: boolean, reason?: string): void;
   setError(message: string | null): void;
-  setTheme(theme: UITheme | null): void;
+  setTheme(theme: ThemeInput): void;
+  getTheme(): UITheme | null;
+  getThemeName(): string;
   setLanguage(language: string, labels?: Partial<UILabels>): void;
   setStatsFields(fields: StatsField[]): void;
   setLayout(layout: UILayout): void;

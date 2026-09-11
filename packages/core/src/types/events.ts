@@ -1,6 +1,7 @@
 import type { QualityChangeEvent, KyrspectQuality } from "./quality";
 import type { KyrspectAudioTrack, KyrspectSubtitleTrack } from "./tracks";
 import type { KyrspectError } from "../errors/KyrspectError";
+import type { UITheme } from "@kyrspect/ui";
 
 export interface KyrspectEventMap {
   ready: undefined;
@@ -35,6 +36,7 @@ export interface KyrspectEventMap {
   dualchannelchange: { enabled: boolean };
   fullscreenchange: { fullscreen: boolean };
   pictureinpicturechange: { active: boolean };
+  themechange: { theme: UITheme | null; name: string };
   liveedge: { atLiveEdge: boolean };
   latencychange: { liveLatency: number | null };
   autoplayblocked: undefined;

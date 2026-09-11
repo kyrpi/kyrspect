@@ -16,6 +16,8 @@ import {
   type KyrspectEventMap,
   type KyrspectOptions,
   type SourceInput,
+  type ThemeInput,
+  type UITheme,
 } from "@kyrspect/core";
 
 export interface KyrspectHandle {
@@ -28,6 +30,9 @@ export interface KyrspectHandle {
   setPlaybackRate(rate: number): void;
   setQuality(level: number | "auto"): void;
   setLanguage(language: string): void;
+  setTheme(theme: ThemeInput): void;
+  getTheme(): UITheme | null;
+  getThemeName(): string;
   enterFullscreen(): Promise<void>;
   exitFullscreen(): Promise<void>;
   getPlayer(): Kyrspect | null;
@@ -43,6 +48,7 @@ export interface KyrspectPlayerProps extends Omit<KyrspectOptions, "src"> {
   onEnded?: () => void;
   onTimeUpdate?: (currentTime: number) => void;
   onQualityChange?: (event: QualityChangeEvent) => void;
+  onThemeChange?: (event: { theme: UITheme | null; name: string }) => void;
   onError?: (error: KyrspectError) => void;
 }
 
@@ -57,6 +63,7 @@ export const KyrspectPlayer = forwardRef<KyrspectHandle, KyrspectPlayerProps>(fu
     onEnded,
     onTimeUpdate,
     onQualityChange,
+    onThemeChange,
     onError,
     ...options
   },
@@ -64,8 +71,8 @@ export const KyrspectPlayer = forwardRef<KyrspectHandle, KyrspectPlayerProps>(fu
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<Kyrspect | null>(null);
-  const callbacks = useRef({ onReady, onPlay, onPause, onEnded, onTimeUpdate, onQualityChange, onError });
-  callbacks.current = { onReady, onPlay, onPause, onEnded, onTimeUpdate, onQualityChange, onError };
+  const callbacks = useRef({ onReady, onPlay, onPause, onEnded, onTimeUpdate, onQualityChange, onThemeChange, onError });
+  callbacks.current = { onReady, onPlay, onPause, onEnded, onTimeUpdate, onQualityChange, onThemeChange, onError };
 
   const optionKey = useMemo(
     () =>
@@ -101,6 +108,7 @@ export const KyrspectPlayer = forwardRef<KyrspectHandle, KyrspectPlayerProps>(fu
       player.on("ended", () => callbacks.current.onEnded?.()),
       player.on("timeupdate", (event) => callbacks.current.onTimeUpdate?.(event.currentTime)),
       player.on("qualitychange", (event) => callbacks.current.onQualityChange?.(event)),
+      player.on("themechange", (event) => callbacks.current.onThemeChange?.(event)),
       player.on("error", (error) => callbacks.current.onError?.(error)),
     ];
 
@@ -123,6 +131,12 @@ export const KyrspectPlayer = forwardRef<KyrspectHandle, KyrspectPlayerProps>(fu
     void player.load(src);
   }, [src]);
 
+  useEffect(() => {
+    const player = playerRef.current;
+    if (!player || options.theme === undefined) return;
+    player.setTheme(options.theme);
+  }, [options.theme]);
+
   useImperativeHandle(ref, () => ({
     play: () => playerRef.current?.play() ?? Promise.resolve(),
     pause: () => playerRef.current?.pause(),
@@ -133,6 +147,9 @@ export const KyrspectPlayer = forwardRef<KyrspectHandle, KyrspectPlayerProps>(fu
     setPlaybackRate: (rate) => playerRef.current?.setPlaybackRate(rate),
     setQuality: (level) => playerRef.current?.setQuality(level),
     setLanguage: (language) => playerRef.current?.setLanguage(language),
+    setTheme: (theme) => playerRef.current?.setTheme(theme),
+    getTheme: () => playerRef.current?.getTheme() ?? null,
+    getThemeName: () => playerRef.current?.getThemeName() ?? "default",
     enterFullscreen: () => playerRef.current?.enterFullscreen() ?? Promise.resolve(),
     exitFullscreen: () => playerRef.current?.exitFullscreen() ?? Promise.resolve(),
     getPlayer: () => playerRef.current,

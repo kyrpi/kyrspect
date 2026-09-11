@@ -5,6 +5,8 @@ export const PLAYER_CSS = `
   --kyrspect-accent: #6d4aff;
   --kyrspect-accent-soft: rgba(109, 74, 255, 0.22);
   --kyrspect-background: #000;
+  --kyrspect-surface: rgba(16, 16, 20, 0.88);
+  --kyrspect-surface-border: rgba(255, 255, 255, 0.08);
   --kyrspect-text: #fff;
   --kyrspect-text-muted: rgba(255, 255, 255, 0.72);
   --kyrspect-control-size: 36px;
@@ -12,9 +14,11 @@ export const PLAYER_CSS = `
   --kyrspect-radius: 12px;
   --kyrspect-font: "Segoe UI Variable", Inter, Roboto, Arial, Helvetica, sans-serif;
   --kyrspect-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  --kyrspect-backdrop-blur: 22px;
   --kyrspect-live: #ff4d6a;
   --kyrspect-track: rgba(255, 255, 255, 0.22);
   --kyrspect-buffered: rgba(255, 255, 255, 0.42);
+  --kyrspect-played: var(--kyrspect-accent);
   --kyrspect-ease: cubic-bezier(0.22, 1, 0.36, 1);
   --kyrspect-duration: 220ms;
   --kyrspect-aspect: 16 / 9;
@@ -386,7 +390,7 @@ export const PLAYER_CSS = `
 }
 
 .kyrspect-timeline-played {
-  background: var(--kyrspect-accent);
+  background: var(--kyrspect-played, var(--kyrspect-accent));
   box-shadow: 0 0 12px var(--kyrspect-accent-soft);
 }
 
@@ -608,10 +612,12 @@ export const PLAYER_CSS = `
   max-height: min(340px, 72%);
   overflow: auto;
   padding: 6px 0;
-  border-radius: 14px;
-  background: rgba(16, 16, 20, 0.88);
+  border-radius: var(--kyrspect-radius, 14px);
+  background: var(--kyrspect-surface, rgba(16, 16, 20, 0.88));
+  border: 1px solid var(--kyrspect-surface-border, rgba(255, 255, 255, 0.08));
   box-shadow: var(--kyrspect-shadow);
-  backdrop-filter: blur(22px);
+  backdrop-filter: blur(var(--kyrspect-backdrop-blur, 22px));
+  -webkit-backdrop-filter: blur(var(--kyrspect-backdrop-blur, 22px));
   z-index: 8;
   display: none;
   /* Overlay is pointer-events: none so clicks reach the video; the menu
@@ -841,86 +847,276 @@ export const PLAYER_CSS = `
   transform: translateX(-50%) translateY(0);
 }
 
+.kyrspect-menu[data-view="rate"] {
+  min-width: 300px;
+  max-width: 340px;
+  padding: 0 0 10px;
+}
+
+.kyrspect-rate-panel {
+  padding: 0 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.kyrspect-rate-display {
+  font-size: 26px;
+  font-weight: 700;
+  color: #fff;
+  text-align: center;
+  padding: 20px 0 14px;
+  letter-spacing: -0.3px;
+  font-variant-numeric: tabular-nums;
+}
+
+.kyrspect-rate-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.kyrspect-rate-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  border: none;
+  color: #fff;
+  font-size: 20px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  transition: background 0.15s ease, transform 0.1s ease;
+  line-height: 1;
+}
+
+.kyrspect-rate-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.kyrspect-rate-btn:active {
+  transform: scale(0.92);
+}
+
+.kyrspect-rate-range-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.kyrspect-rate-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+  margin: 0;
+  border: none;
+  padding: 0;
+}
+
+.kyrspect-rate-range::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: transparent;
+}
+
+.kyrspect-rate-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffffff;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  margin-top: -7px;
+  transition: transform 0.1s ease;
+}
+
+.kyrspect-rate-range::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+
+.kyrspect-rate-range::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: transparent;
+}
+
+.kyrspect-rate-range::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.kyrspect-rate-chips {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.kyrspect-rate-chip-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+}
+
+.kyrspect-rate-chip {
+  width: 100%;
+  height: 38px;
+  border-radius: 19px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid transparent;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  padding: 0;
+}
+
+.kyrspect-rate-chip:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.kyrspect-rate-chip[aria-checked="true"] {
+  background: rgba(255, 255, 255, 0.28);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.kyrspect-rate-chip-label {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.7);
+  margin-top: 4px;
+  white-space: nowrap;
+}
+
 .kyrspect-player .kyrspect-stats {
   position: absolute;
   top: 10px;
   left: 10px;
   z-index: 9;
-  min-width: 280px;
-  max-width: min(440px, calc(100% - 20px));
-  padding: 8px 10px 10px;
-  border-radius: 10px;
-  background: rgba(8, 8, 10, 0.78);
+  min-width: 320px;
+  max-width: min(560px, calc(100% - 20px));
+  padding: 8px 12px 8px 10px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   color: #fff;
+  font-family: Roboto, Arial, Helvetica, sans-serif;
   font-size: 11px;
   font-variant-numeric: tabular-nums;
-  line-height: 1.45;
+  line-height: 1.38;
   pointer-events: auto;
   display: none;
-  backdrop-filter: blur(14px);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+  user-select: text;
 }
 
 .kyrspect-stats-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 6px;
+  height: 0;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
 }
 
 .kyrspect-stats-title {
-  font-weight: 600;
-  line-height: 1.35;
+  display: none;
 }
 
 .kyrspect-stats-close {
+  position: absolute;
+  top: 6px;
+  right: 8px;
   border: 0;
   background: transparent;
   color: #fff;
   cursor: pointer;
-  font: inherit;
-  padding: 4px 6px;
-  margin: -4px -6px 0 0;
+  font-family: monospace, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 0;
   line-height: 1;
-  opacity: 0.85;
+  opacity: 0.9;
   pointer-events: auto;
+  z-index: 2;
 }
 
 .kyrspect-stats-close:hover {
   opacity: 1;
+  color: #ddd;
 }
 
 .kyrspect-stats-body {
   display: grid;
-  gap: 1px;
+  grid-template-columns: auto 1fr;
+  column-gap: 10px;
+  row-gap: 2px;
+  align-items: center;
 }
 
 .kyrspect-stats-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
+  display: contents;
 }
 
 .kyrspect-stats-key {
-  color: rgba(255, 255, 255, 0.86);
+  color: #fff;
+  font-weight: 700;
+  text-align: right;
   white-space: nowrap;
+  justify-self: end;
+  line-height: 1.38;
 }
 
 .kyrspect-stats-val {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 6px;
+  gap: 8px;
   min-width: 0;
-  text-align: right;
+  color: #fff;
+  font-weight: 400;
+  text-align: left;
+  justify-self: start;
   word-break: break-word;
+  line-height: 1.38;
+}
+
+.kyrspect-stats-row:first-child .kyrspect-stats-val {
+  padding-right: 24px;
+}
+
+.kyrspect-stats-num {
+  white-space: nowrap;
 }
 
 .kyrspect-spark {
-  width: 56px;
-  height: 10px;
+  width: clamp(140px, 25vw, 220px);
+  height: 11px;
   flex: none;
+  background: #000;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  display: inline-block;
+  vertical-align: middle;
 }
 
 .kyrspect-player.kyrspect-stats-open .kyrspect-stats {
@@ -1053,18 +1249,23 @@ export const PLAYER_CSS = `
 }
 
 .kyrspect-player:fullscreen,
-.kyrspect-player:-webkit-full-screen {
-  width: 100%;
-  height: 100%;
-  max-height: none;
-  border-radius: 0;
+.kyrspect-player:-webkit-full-screen,
+.kyrspect-player:-moz-full-screen,
+.kyrspect-player.kyrspect-fullscreen {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+  border-radius: 0 !important;
 }
 
 .kyrspect-player:fullscreen .kyrspect-sizer,
-.kyrspect-player:-webkit-full-screen .kyrspect-sizer {
-  height: 100%;
-  padding-bottom: 0;
-  aspect-ratio: auto;
+.kyrspect-player:-webkit-full-screen .kyrspect-sizer,
+.kyrspect-player:-moz-full-screen .kyrspect-sizer,
+.kyrspect-player.kyrspect-fullscreen .kyrspect-sizer {
+  height: 100% !important;
+  padding-bottom: 0 !important;
+  aspect-ratio: auto !important;
 }
 
 @media (max-width: 640px) {
@@ -1121,6 +1322,98 @@ export const PLAYER_CSS = `
 @keyframes kyrspect-bezel {
   0% { opacity: 1; transform: scale(0.85); }
   100% { opacity: 0; transform: scale(1.25); }
+}
+
+/* Light theme variations */
+.kyrspect-player.kyrspect-theme-light .kyrspect-gradient {
+  background:
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.15) 0%, transparent 22%),
+    linear-gradient(to top, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.4) 36%, transparent 72%);
+}
+
+.kyrspect-player.kyrspect-theme-light .kyrspect-btn {
+  color: #111827;
+}
+
+.kyrspect-player.kyrspect-theme-light .kyrspect-btn:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.kyrspect-player.kyrspect-theme-light .kyrspect-time {
+  color: #111827;
+}
+
+.kyrspect-player.kyrspect-theme-light .kyrspect-menu {
+  color: #111827;
+}
+
+.kyrspect-player.kyrspect-theme-light .kyrspect-menu-title,
+.kyrspect-player.kyrspect-theme-light .kyrspect-menu-back {
+  color: #111827;
+  border-bottom-color: rgba(0, 0, 0, 0.08);
+}
+
+.kyrspect-player.kyrspect-theme-light .kyrspect-menu-item {
+  color: #111827;
+}
+
+.kyrspect-player.kyrspect-theme-light .kyrspect-menu-item:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.kyrspect-player.kyrspect-theme-light .kyrspect-menu-value {
+  color: rgba(17, 24, 39, 0.65);
+}
+
+.kyrspect-player.kyrspect-theme-light .kyrspect-timeline-hover {
+  background: #ffffff;
+  color: #111827;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+}
+
+.kyrspect-player.kyrspect-theme-light .kyrspect-speed-panel {
+  color: #111827;
+}
+
+.kyrspect-player.kyrspect-theme-light .kyrspect-speed-readout-num {
+  color: #111827;
+}
+
+.kyrspect-player.kyrspect-theme-light .kyrspect-speed-pill {
+  background: rgba(0, 0, 0, 0.06);
+  color: #111827;
+}
+
+.kyrspect-player.kyrspect-theme-light .kyrspect-speed-pill:hover {
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.kyrspect-player.kyrspect-theme-light .kyrspect-speed-pill.is-active {
+  background: #111827;
+  color: #fff;
+}
+
+.kyrspect-player.kyrspect-theme-light .kyrspect-speed-btn {
+  background: rgba(0, 0, 0, 0.06);
+  color: #111827;
+}
+
+.kyrspect-player.kyrspect-theme-light .kyrspect-speed-btn:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.12);
+}
+
+/* Glass theme variations */
+.kyrspect-player.kyrspect-theme-glass .kyrspect-menu {
+  background: rgba(255, 255, 255, 0.09);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(32px);
+  -webkit-backdrop-filter: blur(32px);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+}
+
+.kyrspect-player.kyrspect-theme-glass .kyrspect-controls {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 @media (prefers-reduced-motion: reduce) {

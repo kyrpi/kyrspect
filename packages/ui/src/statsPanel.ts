@@ -1,6 +1,6 @@
 import type { PlayerLike, StatsField, UILabels } from "./types";
 
-const SPARK_LIMIT = 28;
+const SPARK_LIMIT = 44;
 
 export interface SparkHistory {
   connection: number[];
@@ -17,21 +17,97 @@ export function pushSpark(history: SparkHistory, key: keyof SparkHistory, value:
   if (history[key].length > SPARK_LIMIT) history[key].shift();
 }
 
-function sparkline(values: number[], color: string): string {
-  const width = 56;
-  const height = 10;
-  if (values.length < 2) {
-    return `<svg class="kyrspect-spark" viewBox="0 0 ${width} ${height}" aria-hidden="true"></svg>`;
-  }
-  const max = Math.max(...values, 1);
-  const points = values
-    .map((value, index) => {
-      const x = (index / (values.length - 1)) * width;
-      const y = height - (value / max) * (height - 1.2) - 0.6;
+const sessionCpnMap = new WeakMap<object, string>();
+
+function getSessionCpn(player: PlayerLike): string {
+  const obj = player as unknown as object;
+  if (sessionCpnMap.has(obj)) return sessionCpnMap.get(obj)!;
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  const gen = (len: number) =>
+    Array.from({ length: len }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+  const cpn = `${gen(4)} ${gen(4)} ${gen(4)} ${gen(4)} ${gen(4)}`;
+  sessionCpnMap.set(obj, cpn);
+  return cpn;
+}
+
+function sparkline(type: "connection" | "network" | "buffer", values: number[]): string {
+  const width = 220;
+  const height = 11;
+  const len = values.length;
+
+  if (type === "buffer") {
+    const max = Math.max(30, ...values, 10);
+    if (len < 2) {
+      const first = values[0] ?? 0;
+      const h = len === 1 ? Math.min(height, Math.max(1, (first / max) * height)) : 0;
+      return `<svg class="kyrspect-spark" viewBox="0 0 ${width} ${height}" aria-hidden="true">
+        <rect width="${width}" height="${height}" fill="#000" />
+        ${h > 0 ? `<rect x="0" y="${height - h}" width="${width}" height="${h}" fill="#eb9d52" />` : ""}
+      </svg>`;
+    }
+    const points = values.map((val, i) => {
+      const x = (i / (len - 1)) * width;
+      const h = Math.min(height, Math.max(0.5, (val / max) * height));
+      const y = height - h;
       return `${x.toFixed(1)},${y.toFixed(1)}`;
+    });
+    const polyPoints = `0,${height} ${points.join(" ")} ${width},${height}`;
+    return `<svg class="kyrspect-spark" viewBox="0 0 ${width} ${height}" aria-hidden="true">
+      <rect width="${width}" height="${height}" fill="#000" />
+      <polygon points="${polyPoints}" fill="#eb9d52" />
+      <polyline points="${points.join(" ")}" fill="none" stroke="#f8ba74" stroke-width="0.8" />
+    </svg>`;
+  }
+
+  if (type === "connection") {
+    const max = Math.max(...values, 1000000);
+    const gradId = `kyr-cg-${Math.random().toString(36).slice(2, 7)}`;
+    if (len < 2) {
+      return `<svg class="kyrspect-spark" viewBox="0 0 ${width} ${height}" aria-hidden="true">
+        <rect width="${width}" height="${height}" fill="#000" />
+        <rect width="${width}" height="${height}" fill="#4a8ec2" fill-opacity="0.8" />
+      </svg>`;
+    }
+    const points = values.map((val, i) => {
+      const x = (i / (len - 1)) * width;
+      const h = Math.min(height, Math.max(2, (val / max) * height));
+      const y = height - h;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    });
+    const polyPoints = `0,${height} ${points.join(" ")} ${width},${height}`;
+    return `<svg class="kyrspect-spark" viewBox="0 0 ${width} ${height}" aria-hidden="true">
+      <defs>
+        <linearGradient id="${gradId}" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#64b59b" />
+          <stop offset="25%" stop-color="#498ec5" />
+          <stop offset="65%" stop-color="#f6e594" />
+          <stop offset="100%" stop-color="#72b896" />
+        </linearGradient>
+      </defs>
+      <rect width="${width}" height="${height}" fill="#000" />
+      <polygon points="${polyPoints}" fill="url(#${gradId})" />
+      <polyline points="${points.join(" ")}" fill="none" stroke="#f6e594" stroke-width="0.75" />
+    </svg>`;
+  }
+
+  // network activity
+  const max = Math.max(...values, 50000);
+  const barW = Math.max(2, width / Math.max(len, 1));
+  const rects = values
+    .map((val, i) => {
+      if (!val) return "";
+      const x = (i / Math.max(len, 1)) * width;
+      const ratio = val / max;
+      const h = Math.min(height, Math.max(3, ratio * height));
+      const color = ratio > 0.65 ? "#e74c3c" : ratio > 0.3 ? "#f39c12" : "#3f80c6";
+      return `<rect x="${x.toFixed(1)}" y="${(height - h).toFixed(1)}" width="${barW.toFixed(1)}" height="${h.toFixed(1)}" fill="${color}" />`;
     })
-    .join(" ");
-  return `<svg class="kyrspect-spark" viewBox="0 0 ${width} ${height}" aria-hidden="true"><polyline points="${points}" fill="none" stroke="${color}" stroke-width="1.25" /></svg>`;
+    .join("");
+
+  return `<svg class="kyrspect-spark" viewBox="0 0 ${width} ${height}" aria-hidden="true">
+    <rect width="${width}" height="${height}" fill="#000" />
+    ${rects}
+  </svg>`;
 }
 
 function formatRes(width: number, height: number, frameRate?: number): string {
@@ -74,10 +150,13 @@ function builtInValue(
   id: string,
   player: PlayerLike,
   stats: ReturnType<PlayerLike["getStats"]>,
-): { text: string; spark?: { key: keyof SparkHistory; color: string } } | null {
+): { text: string; spark?: { type: "connection" | "network" | "buffer"; key: keyof SparkHistory } } | null {
   switch (id) {
-    case "videoId":
-      return { text: stats.id || "—" };
+    case "videoId": {
+      const scpn = getSessionCpn(player);
+      const vid = stats.id && stats.id !== "—" ? stats.id : "";
+      return { text: vid ? `${vid} / ${scpn}` : `— / ${scpn}` };
+    }
     case "viewport":
       return {
         text: `${stats.viewport.width}x${stats.viewport.height} / ${stats.frames.dropped} dropped of ${stats.frames.decoded}`,
@@ -86,18 +165,25 @@ function builtInValue(
       return {
         text: `${formatRes(stats.resolution.width, stats.resolution.height, stats.resolution.frameRate)} / ${formatRes(stats.optimal.width, stats.optimal.height, stats.optimal.frameRate)}`,
       };
-    case "volume":
-      return { text: `${Math.round(stats.volume.level * 100)}%${stats.volume.muted ? " muted" : ""}` };
+    case "volume": {
+      const vol = Math.round(stats.volume.level * 100);
+      if (stats.volume.muted) {
+        return { text: `0% / ${vol}% (muted)` };
+      }
+      return { text: `${vol}% / 100%` };
+    }
     case "codecs":
       return { text: stats.codecs || "—" };
-    case "color":
-      return { text: stats.color || "—" };
+    case "color": {
+      const color = stats.color || "bt709 / bt709";
+      return { text: color.includes("/") ? color : `${color} / ${color}` };
+    }
     case "connection":
-      return { text: formatKbps(stats.network.bandwidthEstimate), spark: { key: "connection", color: "#3ea6ff" } };
+      return { text: formatKbps(stats.network.bandwidthEstimate), spark: { type: "connection", key: "connection" } };
     case "network":
-      return { text: formatBytes(stats.network.activityBytes), spark: { key: "network", color: "#7ab7ff" } };
+      return { text: formatBytes(stats.network.activityBytes), spark: { type: "network", key: "network" } };
     case "buffer":
-      return { text: `${stats.buffer.ahead.toFixed(2)} s`, spark: { key: "buffer", color: "#ff9800" } };
+      return { text: `${stats.buffer.ahead.toFixed(2)} s`, spark: { type: "buffer", key: "buffer" } };
     case "live":
       if (!player.isLive) return null;
       return { text: `${player.liveLatency?.toFixed(2) ?? "—"} s` };
@@ -127,7 +213,13 @@ export function renderStatsRows(
     if (typeof field === "string") {
       const built = builtInValue(field, player, stats);
       if (!built) continue;
-      body.append(row(fieldLabel(field, labels), built.text, built.spark ? sparkline(history[built.spark.key], built.spark.color) : ""));
+      body.append(
+        row(
+          fieldLabel(field, labels),
+          built.text,
+          built.spark ? sparkline(built.spark.type, history[built.spark.key]) : "",
+        ),
+      );
       continue;
     }
     const text =
@@ -145,7 +237,7 @@ function row(label: string, value: string, spark = ""): HTMLElement {
   const val = document.createElement("span");
   val.className = "kyrspect-stats-val";
   if (spark) {
-    val.innerHTML = `${spark}<span>${value}</span>`;
+    val.innerHTML = `${spark}<span class="kyrspect-stats-num">${value}</span>`;
   } else {
     val.textContent = value;
   }

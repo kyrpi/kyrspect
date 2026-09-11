@@ -5,7 +5,7 @@ import type { StatsOptions } from "./stats";
 import type { DrmOptions } from "./drm";
 import type { SubtitleStyle } from "../captions/SubtitleManager";
 import type { EqualizerPresetId } from "../media/AudioEnhancer";
-import type { UIAspectRatio, UIControlsConfig, UIFit, UILabels, UILayout, UITheme } from "@kyrspect/ui";
+import type { UIAspectRatio, UIControlsConfig, UIFit, UILabels, UILayout, UITheme, ThemeInput } from "@kyrspect/ui";
 
 export interface AdvancedAudioOptions {
   dualChannel?: boolean;
@@ -68,7 +68,7 @@ export interface UIPlayerOptions {
   showOnPause?: boolean;
   language?: string;
   labels?: Partial<UILabels>;
-  theme?: UITheme;
+  theme?: ThemeInput;
   layout?: UILayout;
   aspectRatio?: UIAspectRatio;
   fit?: UIFit;
@@ -96,6 +96,7 @@ export interface KyrspectOptions {
   dash?: DashOptions;
   drm?: DrmOptions;
   live?: LiveOptions;
+  theme?: ThemeInput;
   ui?: UIPlayerOptions;
   language?: string;
   stats?: StatsOptions;

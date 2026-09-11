@@ -83,4 +83,13 @@ export const es: UILabels = {
   bgTransparent: "Transparente / Ninguno",
   bgDarkBlue: "Azul oscuro",
   bgDarkGray: "Gris oscuro",
+  theme: "Tema",
+  themeDefault: "Predeterminado",
+  themeScarlet: "Escarlata",
+  themeCinema: "Cine",
+  themeEmerald: "Esmeralda",
+  themeCyberpunk: "Ciberpunk",
+  themeLight: "Claro",
+  themeGlass: "Cristal",
+  themeAmber: "Ámbar",
 };

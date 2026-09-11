@@ -9,6 +9,7 @@ export interface StoredPreferences {
   subtitleFontSize?: string;
   audioDualChannel?: boolean;
   audioEqualizer?: string;
+  theme?: string;
 }
 
 export class StorageManager {

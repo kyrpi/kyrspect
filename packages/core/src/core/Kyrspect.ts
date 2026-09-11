@@ -5,6 +5,7 @@ import {
   resolveLocale,
   type PlayerLike,
   type PlayerUIHandle,
+  type ThemeInput,
   type UIAspectRatio,
   type UILayout,
   type UITheme,
@@ -192,7 +193,12 @@ export class Kyrspect {
     this.videoUnbind = this.bindVideoEvents();
     this.plugins.attach(this);
 
-    applyTheme(this.el, this.optionsInternal.ui?.theme);
+    const initialTheme = this.optionsInternal.theme ?? this.optionsInternal.ui?.theme ?? this.storage.read().theme;
+    if (initialTheme) {
+      if (!this.optionsInternal.ui) this.optionsInternal.ui = {};
+      this.optionsInternal.ui.theme = initialTheme;
+    }
+    applyTheme(this.el, initialTheme);
     this.applyStatsConfig(this.optionsInternal.src ?? null);
 
     if (controlsEnabled) {
@@ -202,7 +208,7 @@ export class Kyrspect {
         showOnPause: this.optionsInternal.ui?.showOnPause,
         language: this.optionsInternal.language ?? this.optionsInternal.ui?.language,
         labels: this.optionsInternal.ui?.labels,
-        theme: this.optionsInternal.ui?.theme,
+        theme: initialTheme,
         statsFields: this.statsFieldsInternal,
         layout: this.optionsInternal.ui?.layout,
         aspectRatio: this.optionsInternal.ui?.aspectRatio,
@@ -225,11 +231,24 @@ export class Kyrspect {
     }
   }
 
-  setTheme(theme: UITheme | null): void {
+  setTheme(theme: ThemeInput): void {
     if (this.optionsInternal.ui) this.optionsInternal.ui.theme = theme ?? undefined;
     else this.optionsInternal.ui = { theme: theme ?? undefined };
-    applyTheme(this.el, theme);
+    const resolved = applyTheme(this.el, theme);
     this.ui?.setTheme(theme);
+    const themeName = this.el.dataset.theme || (typeof theme === "string" ? theme : "default");
+    if (typeof theme === "string") {
+      this.storage.write({ theme });
+    }
+    this.events.emit("themechange", { theme: resolved, name: themeName });
+  }
+
+  getTheme(): UITheme | null {
+    return this.ui?.getTheme() ?? null;
+  }
+
+  getThemeName(): string {
+    return this.el.dataset.theme || this.ui?.getThemeName() || "default";
   }
 
   setLanguage(language: string): void {

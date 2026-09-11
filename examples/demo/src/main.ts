@@ -56,12 +56,31 @@ const form = document.querySelector<HTMLFormElement>("#loader")!;
 const accent = document.querySelector<HTMLInputElement>("#accent")!;
 const language = document.querySelector<HTMLSelectElement>("#language")!;
 const layout = document.querySelector<HTMLSelectElement>("#layout")!;
+const themeSelect = document.querySelector<HTMLSelectElement>("#theme")!;
 const host = document.querySelector<HTMLElement>("#player")!;
 const diag = document.querySelector<HTMLDListElement>("#diag dl")!;
 url.value = DEFAULT_SRC;
 accent.value = DEFAULT_ACCENT;
 language.value = "auto";
 layout.value = "standard";
+if (themeSelect) themeSelect.value = player.getThemeName();
+
+themeSelect?.addEventListener("change", () => {
+  player.setTheme(themeSelect.value);
+  const cur = player.getTheme();
+  if (cur?.accent) {
+    if (cur.accent.startsWith("#")) accent.value = cur.accent;
+    document.documentElement.style.setProperty("--accent", cur.accent);
+  }
+});
+
+player.on("themechange", (event) => {
+  if (themeSelect) themeSelect.value = event.name;
+  if (event.theme?.accent) {
+    if (event.theme.accent.startsWith("#")) accent.value = event.theme.accent;
+    document.documentElement.style.setProperty("--accent", event.theme.accent);
+  }
+});
 
 language.addEventListener("change", () => {
   player.setLanguage(language.value);

@@ -4,12 +4,13 @@ import { icons } from "./icons";
 import { resolveFrameSize, shouldFillHost } from "./layout";
 import { createSparkHistory, renderStatsRows } from "./statsPanel";
 import { injectStyles } from "./styles";
-import { applyTheme } from "./theme";
+import { applyTheme, getRegisteredThemes } from "./theme";
 import { createAudioWaveform, type AudioWaveformHandle } from "./waveform";
 import type {
   PlayerLike,
   PlayerUIHandle,
   StatsField,
+  ThemeInput,
   UIAspectRatio,
   UIControlsConfig,
   UIFit,
@@ -72,6 +73,7 @@ type MenuView =
   | "captions"
   | "rate"
   | "audio"
+  | "theme"
   | "advanced"
   | "advanced-subtitles"
   | "advanced-sub-font"
@@ -94,12 +96,17 @@ export function attachDefaultUI(player: PlayerLike, options: UIOptions = {}): Pl
   const root = player.el;
 
   root.classList.add("kyrspect", "kyrspect-player");
-  applyTheme(root, options.theme);
+  let activeThemeResolved: UITheme = applyTheme(root, options.theme);
   if (player.options.debug) root.classList.add("kyrspect-debug");
   if (!root.hasAttribute("tabindex")) root.tabIndex = 0;
   root.setAttribute("role", "region");
   root.setAttribute("lang", resolveLocale(language));
   root.setAttribute("aria-label", labels.player);
+
+  const getThemeLocalizedLabel = (themeId: string, fallback?: string): string => {
+    const key = `theme${themeId.charAt(0).toUpperCase() + themeId.slice(1)}` as keyof UILabels;
+    return (labels[key] as string) || fallback || themeId;
+  };
 
   player.media.classList.add("kyrspect-video");
   player.media.style.zIndex = "1";
@@ -233,7 +240,7 @@ export function attachDefaultUI(player: PlayerLike, options: UIOptions = {}): Pl
     type: "button",
     "aria-label": labels.statsClose,
   });
-  statsClose.textContent = "[x]";
+  statsClose.textContent = "[X]";
   statsHead.append(statsTitle, statsClose);
   const statsBody = el("div", "kyrspect-stats-body");
   debug.append(statsHead, statsBody);
@@ -257,6 +264,7 @@ export function attachDefaultUI(player: PlayerLike, options: UIOptions = {}): Pl
   let menuOpen = false;
   let contextOpen = false;
   let statsOpen = false;
+  let statsTimer: any = null;
   let menuView: MenuView = "root";
   let dragging = false;
   let raf = 0;
@@ -329,6 +337,7 @@ export function attachDefaultUI(player: PlayerLike, options: UIOptions = {}): Pl
 
   const updateFsPip = () => {
     const fs = player.isFullscreen();
+    root.classList.toggle("kyrspect-fullscreen", fs);
     fsBtn.innerHTML = fs ? icons.exitFullscreen : icons.fullscreen;
     fsBtn.setAttribute("aria-label", fs ? labels.exitFullscreen : labels.fullscreen);
     const pip = player.isPictureInPicture();
@@ -358,6 +367,7 @@ export function attachDefaultUI(player: PlayerLike, options: UIOptions = {}): Pl
     menu.dataset.view = menuView;
     syncMenuChrome();
     menu.replaceChildren();
+    menu.dataset.view = menuView;
 
     const subtitleFonts = [
       { id: "default", label: labels.fontDefault, value: "inherit" },
@@ -575,6 +585,20 @@ export function attachDefaultUI(player: PlayerLike, options: UIOptions = {}): Pl
         );
       }
       if (controls.settings) {
+        const activeThemeId = root.dataset.theme || "default";
+        const themeLabel = getThemeLocalizedLabel(activeThemeId, activeThemeResolved.label);
+        addItem(
+          labels.theme,
+          () => {
+            menuView = "theme";
+            renderMenu();
+          },
+          {
+            chevron: true,
+            current: themeLabel,
+            colorDot: activeThemeResolved.accent,
+          },
+        );
         addItem(
           labels.advancedSettings,
           () => {
@@ -584,6 +608,28 @@ export function attachDefaultUI(player: PlayerLike, options: UIOptions = {}): Pl
           {
             chevron: true,
             icon: icons.sliders,
+          },
+        );
+      }
+    } else if (menuView === "theme") {
+      addHeader(labels.theme, true);
+      const activeThemeId = root.dataset.theme || "default";
+      const themes = getRegisteredThemes();
+      for (const t of themes) {
+        const itemLabel = getThemeLocalizedLabel(t.id, t.label);
+        addItem(
+          itemLabel,
+          () => {
+            activeThemeResolved = applyTheme(root, t.id);
+            const playerAny = player as unknown as { setTheme?: (theme: ThemeInput) => void };
+            if (typeof playerAny.setTheme === "function") {
+              playerAny.setTheme(t.id);
+            }
+            renderMenu();
+          },
+          {
+            checked: activeThemeId === t.id,
+            colorDot: t.theme.accent,
           },
         );
       }
@@ -603,12 +649,118 @@ export function attachDefaultUI(player: PlayerLike, options: UIOptions = {}): Pl
       }
     } else if (menuView === "rate") {
       addHeader(labels.playbackRate, true);
-      for (const rate of [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]) {
-        addItem(rate === 1 ? labels.playbackRateNormal : String(rate), () => {
+
+      const panel = el("div", "kyrspect-rate-panel");
+      const display = el("div", "kyrspect-rate-display");
+      display.textContent = `${player.playbackRate.toFixed(2)}x`;
+
+      const controlsRow = el("div", "kyrspect-rate-controls");
+      const minusBtn = el("button", "kyrspect-rate-btn", {
+        type: "button",
+        "aria-label": "Decrease speed",
+      });
+      minusBtn.textContent = "−";
+
+      const sliderWrap = el("div", "kyrspect-rate-range-wrap");
+      const slider = el("input", "kyrspect-rate-range", {
+        type: "range",
+        min: "0.25",
+        max: "3",
+        step: "0.05",
+        value: String(player.playbackRate),
+        "aria-label": labels.playbackRate,
+      }) as HTMLInputElement;
+
+      const updateSliderBackground = (val: number) => {
+        const pct = Math.max(0, Math.min(100, ((val - 0.25) / (3.0 - 0.25)) * 100));
+        slider.style.background = `linear-gradient(to right, #fff 0%, #fff ${pct}%, rgba(255, 255, 255, 0.25) ${pct}%, rgba(255, 255, 255, 0.25) 100%)`;
+      };
+      updateSliderBackground(player.playbackRate);
+
+      const plusBtn = el("button", "kyrspect-rate-btn", {
+        type: "button",
+        "aria-label": "Increase speed",
+      });
+      plusBtn.textContent = "+";
+
+      sliderWrap.append(slider);
+      controlsRow.append(minusBtn, sliderWrap, plusBtn);
+
+      const chipsRow = el("div", "kyrspect-rate-chips");
+      const presets = [1, 1.25, 1.5, 2, 3];
+      const chipButtons: HTMLButtonElement[] = [];
+
+      const formatRatePill = (rate: number): string => {
+        if (resolveLocale(language) === "tr") {
+          return rate === 1 ? "1,0" : rate === 2 ? "2,0" : rate === 3 ? "3,0" : String(rate).replace(".", ",");
+        }
+        return rate === 1 ? "1.0" : rate === 2 ? "2.0" : rate === 3 ? "3.0" : String(rate);
+      };
+
+      const updateActiveChips = () => {
+        const cur = player.playbackRate;
+        for (const btn of chipButtons) {
+          const r = Number(btn.dataset.rate);
+          const active = Math.abs(cur - r) < 0.01;
+          btn.setAttribute("aria-checked", String(active));
+        }
+      };
+
+      for (const rate of presets) {
+        const col = el("div", "kyrspect-rate-chip-col");
+        const chip = el("button", "kyrspect-rate-chip kyrspect-menu-item", {
+          type: "button",
+          role: "menuitemradio",
+          "aria-checked": String(player.playbackRate === rate),
+        }) as HTMLButtonElement;
+        chip.dataset.rate = String(rate);
+        chip.dataset.value = String(rate);
+        chip.textContent = rate === 1.5 && resolveLocale(language) === "en" ? "1.5" : formatRatePill(rate);
+
+        chip.addEventListener("click", (e) => {
+          e.stopPropagation();
           player.setPlaybackRate(rate);
           closeMenu();
-        }, { checked: player.playbackRate === rate });
+        });
+
+        col.append(chip);
+        if (rate === 1) {
+          const sub = el("span", "kyrspect-rate-chip-label");
+          sub.textContent = labels.playbackRateNormal;
+          col.append(sub);
+        }
+        chipButtons.push(chip);
+        chipsRow.append(col);
       }
+
+      const applyRate = (val: number) => {
+        val = Math.round(val * 100) / 100;
+        val = Math.max(0.25, Math.min(3, val));
+        player.setPlaybackRate(val);
+        display.textContent = `${val.toFixed(2)}x`;
+        slider.value = String(val);
+        updateSliderBackground(val);
+        updateActiveChips();
+      };
+
+      minusBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        applyRate(player.playbackRate - 0.05);
+      });
+
+      plusBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        applyRate(player.playbackRate + 0.05);
+      });
+
+      slider.addEventListener("input", (e) => {
+        e.stopPropagation();
+        const val = parseFloat(slider.value);
+        applyRate(val);
+      });
+
+      panel.append(display, controlsRow, chipsRow);
+      menu.append(panel);
     } else if (menuView === "captions") {
       addHeader(labels.subtitles, true);
       addItem(labels.subtitlesOff, () => {
@@ -883,11 +1035,20 @@ export function attachDefaultUI(player: PlayerLike, options: UIOptions = {}): Pl
     statsOpen = true;
     root.classList.add("kyrspect-stats-open");
     renderStats();
+    if (!statsTimer) {
+      statsTimer = window.setInterval(() => {
+        if (statsOpen) renderStats();
+      }, 500);
+    }
   };
 
   const closeStats = () => {
     statsOpen = false;
     root.classList.remove("kyrspect-stats-open");
+    if (statsTimer) {
+      window.clearInterval(statsTimer);
+      statsTimer = null;
+    }
   };
 
   const renderStats = () => {
@@ -1249,6 +1410,12 @@ export function attachDefaultUI(player: PlayerLike, options: UIOptions = {}): Pl
       visible();
     }),
     player.on("loadedmetadata", applyFrame),
+    player.on("statsupdate", () => {
+      if (statsOpen) renderStats();
+    }),
+    player.on("ratechange", () => {
+      if (menuOpen && menuView === "rate") renderMenu();
+    }),
   );
 
   const applyLanguage = (next?: string, overrides?: Partial<UILabels>) => {
@@ -1309,8 +1476,17 @@ export function attachDefaultUI(player: PlayerLike, options: UIOptions = {}): Pl
         errorTitle.textContent = labels.errorTitle;
       }
     },
-    setTheme(theme: UITheme | null) {
-      applyTheme(root, theme);
+    setTheme(theme: ThemeInput) {
+      activeThemeResolved = applyTheme(root, theme);
+      if (menuOpen && (menuView === "root" || menuView === "theme")) {
+        renderMenu();
+      }
+    },
+    getTheme() {
+      return activeThemeResolved;
+    },
+    getThemeName() {
+      return root.dataset.theme || "default";
     },
     setLanguage(next: string, overrides?: Partial<UILabels>) {
       applyLanguage(next, overrides);
@@ -1336,6 +1512,10 @@ export function attachDefaultUI(player: PlayerLike, options: UIOptions = {}): Pl
       return audioVisualizerEnabled;
     },
     destroy() {
+      if (statsTimer) {
+        window.clearInterval(statsTimer);
+        statsTimer = null;
+      }
       window.clearTimeout(hideTimer);
       window.clearTimeout(clickTimer);
       window.clearTimeout(toastTimer);
@@ -1360,6 +1540,7 @@ export function attachDefaultUI(player: PlayerLike, options: UIOptions = {}): Pl
         "kyrspect-error",
         "kyrspect-debug",
         "kyrspect-stats-open",
+        "kyrspect-fullscreen",
         "kyrspect-layout-reels",
         "kyrspect-layout-standard",
         "kyrspect-portrait",

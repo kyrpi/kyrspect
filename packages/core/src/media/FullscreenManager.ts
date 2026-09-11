@@ -37,21 +37,29 @@ export class FullscreenManager {
   async enter(): Promise<void> {
     if (!this.available || this.active) return;
     const el = this.target as FullscreenElement;
-    if (el.requestFullscreen) {
-      await el.requestFullscreen();
-      return;
+    try {
+      if (el.requestFullscreen) {
+        await el.requestFullscreen({ navigationUI: "hide" } as FullscreenOptions);
+        return;
+      }
+      await el.webkitRequestFullscreen?.();
+      await el.webkitRequestFullScreen?.();
+    } catch {
+      // Fallback or permission rejection handled gracefully
     }
-    await el.webkitRequestFullscreen?.();
-    await el.webkitRequestFullScreen?.();
   }
 
   async exit(): Promise<void> {
     if (!this.active || !this.doc) return;
-    if (this.doc.exitFullscreen) {
-      await this.doc.exitFullscreen();
-      return;
+    try {
+      if (this.doc.exitFullscreen) {
+        await this.doc.exitFullscreen();
+        return;
+      }
+      await this.doc.webkitExitFullscreen?.();
+    } catch {
+      // Fallback
     }
-    await this.doc.webkitExitFullscreen?.();
   }
 
   async toggle(): Promise<void> {
